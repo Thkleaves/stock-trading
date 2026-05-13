@@ -142,8 +142,8 @@ stock-trading/
 
 | 子项目 | 规划文档 | 状态 |
 |---|---|---|
-| stock-trading-frontend | [PLAN.md](./stock-trading-frontend/PLAN.md) | 待开发 |
-| stock-trading-backend | [PLAN.md](./stock-trading-backend/PLAN.md) | 待开发 |
+| stock-trading-frontend | [PLAN.md](./stock-trading-frontend/PLAN.md) | ✅ 已完成 |
+| stock-trading-backend | [PLAN.md](./stock-trading-backend/PLAN.md) | ✅ 已完成 |
 | stock-trading-realtime | [PLAN.md](./stock-trading-realtime/PLAN.md) | ✅ 已完成 |
 
 ---

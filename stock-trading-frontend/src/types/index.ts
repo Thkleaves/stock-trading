@@ -66,7 +66,7 @@ export interface CreateOrderRequest {
 }
 
 export interface WsMessage {
-  type: 'quote' | 'order' | 'position' | 'trade' | 'sync'
+  type: 'quote' | 'quotes' | 'order' | 'position' | 'trade' | 'sync' | 'error'
   data: unknown
 }
 
@@ -90,9 +90,17 @@ export interface WsTradeData {
   trade: Trade
 }
 
+export interface WsQuotesData {
+  [code: string]: StockQuote
+}
+
 export interface WsSyncData {
   quotes: Record<string, StockQuote>
   orders: Order[]
   positions: Position[]
   trades: Trade[]
+}
+
+export interface WsErrorData {
+  message: string
 }

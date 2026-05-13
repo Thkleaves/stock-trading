@@ -2,7 +2,7 @@ import { useMarketStore } from '@/stores/market'
 import { useOrderStore } from '@/stores/order'
 import { usePositionStore } from '@/stores/position'
 import { useTradeStore } from '@/stores/trade'
-import type { WsMessage, WsQuoteData, WsOrderData, WsPositionData, WsTradeData, WsSyncData } from '@/types'
+import type { WsMessage, WsQuoteData, WsQuotesData, WsOrderData, WsPositionData, WsTradeData, WsSyncData, WsErrorData } from '@/types'
 
 const WS_URL = 'ws://localhost:3001'
 const MAX_RECONNECT_INTERVAL = 30000
@@ -40,6 +40,7 @@ class MarketWebSocket {
       console.log('[WebSocket] 已连接')
       this.reconnectAttempts = 0
       this.subscribe()
+      this.resync()
     }
 
     this.ws.onmessage = (event: MessageEvent) => {
@@ -83,6 +84,14 @@ class MarketWebSocket {
         useMarketStore().updateQuote(data)
         break
       }
+      case 'quotes': {
+        const data = msg.data as WsQuotesData
+        const marketStore = useMarketStore()
+        Object.values(data).forEach((quote) => {
+          marketStore.updateQuote(quote)
+        })
+        break
+      }
       case 'order': {
         const data = msg.data as WsOrderData
         useOrderStore().upsertOrder(data.order)
@@ -109,6 +118,11 @@ class MarketWebSocket {
         useTradeStore().setTrades(data.trades)
         break
       }
+      case 'error': {
+        const data = msg.data as WsErrorData
+        console.error('[WebSocket] 服务端错误:', data.message)
+        break
+      }
       default:
         console.warn('[WebSocket] 未知消息类型', msg.type)
     }
@@ -124,7 +138,6 @@ class MarketWebSocket {
     console.log(`[WebSocket] ${delay / 1000}s 后重连`)
     this.reconnectTimer = setTimeout(() => {
       this.createConnection()
-      this.resync()
     }, delay)
   }
 

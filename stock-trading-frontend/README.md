@@ -104,6 +104,7 @@ npm run preview
 |---|---|---|
 | POST | `/api/auth/register` | 注册 |
 | POST | `/api/auth/login` | 登录 |
+| GET | `/api/auth/user?userId=xxx` | 查询用户信息（余额等） |
 | POST | `/api/orders` | 下单 |
 | GET | `/api/orders?userId=xxx` | 查询委托 |
 | GET | `/api/positions?userId=xxx` | 查询持仓 |
@@ -112,11 +113,13 @@ npm run preview
 ## WebSocket 消息协议
 
 **服务端 → 客户端：**
-- `type: "quote"` → 行情推送 → 更新 market store
+- `type: "quotes"` → 全部股票行情（首次订阅）→ 批量更新 market store
+- `type: "quote"` → 单支行情推送 → 更新 market store
 - `type: "order"` → 委托更新 → 更新 order store
 - `type: "position"` → 持仓更新 → 更新 position store
 - `type: "trade"` → 成交推送 → 更新 trade store
 - `type: "sync"` → 全量状态同步（重连后）
+- `type: "error"` → 错误消息
 
 **客户端 → 服务端：**
 - `type: "subscribe"` → 订阅用户频道

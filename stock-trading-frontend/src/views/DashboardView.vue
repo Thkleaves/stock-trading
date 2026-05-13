@@ -31,19 +31,25 @@ onMounted(async () => {
   marketWebSocket.connect(authStore.token)
 
   try {
-    const [orderRes, positionRes, tradeRes] = await Promise.all([
+    const [orderRes, positionRes, tradeRes, userRes] = await Promise.all([
       api.get(`/api/orders?userId=${authStore.token}`),
       api.get(`/api/positions?userId=${authStore.token}`),
       api.get(`/api/trades?userId=${authStore.token}`),
+      api.get(`/api/auth/user?userId=${authStore.token}`),
     ])
 
     const orderData = orderRes as unknown as { orders: [] }
     const positionData = positionRes as unknown as { positions: [] }
     const tradeData = tradeRes as unknown as { trades: [] }
+    const userData = userRes as unknown as { userId: string; username: string; balance: number }
 
     orderStore.setOrders(orderData.orders || [])
     positionStore.setPositions(positionData.positions || [])
     tradeStore.setTrades(tradeData.trades || [])
+
+    if (userData.balance !== undefined) {
+      authStore.updateBalance(userData.balance)
+    }
   } catch (e) {
     console.error('[Dashboard] 初始化数据加载失败', e)
   }

@@ -21,10 +21,13 @@ router.post('/event', (req: Request, res: Response) => {
     return
   }
 
-  sendToUser(userId, {
-    type: type as 'order' | 'position' | 'trade',
-    data,
-  })
+  if (type === 'order') {
+    sendToUser(userId, { type: 'order', data: { order: data } })
+  } else if (type === 'position') {
+    sendToUser(userId, { type: 'position', data: { positions: data } })
+  } else if (type === 'trade') {
+    sendToUser(userId, { type: 'trade', data: { trade: data } })
+  }
 
   res.json({ ok: true })
 })

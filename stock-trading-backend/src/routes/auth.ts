@@ -1,6 +1,10 @@
 import { Router, type Request, type Response } from 'express'
 import type { RegisterRequest, LoginRequest, UserInfo } from '../types/index.js'
+import { STOCKS } from '../types/index.js'
 import { usersStore } from '../store/users.js'
+import { positionsStore } from '../store/positions.js'
+
+const INITIAL_SHARES = 100
 
 const router = Router()
 
@@ -20,6 +24,11 @@ router.post(
     }
 
     const user = usersStore.create(username, password)
+
+    for (const stock of STOCKS) {
+      positionsStore.addPosition(user.id, stock.code, INITIAL_SHARES, stock.initialPrice)
+    }
+
     const userInfo: UserInfo = {
       userId: user.id,
       username: user.username,
@@ -45,6 +54,28 @@ router.post(
       return
     }
 
+    const userInfo: UserInfo = {
+      userId: user.id,
+      username: user.username,
+      balance: user.balance,
+    }
+    res.json(userInfo)
+  }
+)
+
+router.get(
+  '/user',
+  (req: Request, res: Response) => {
+    const userId = req.query.userId as string
+    if (!userId) {
+      res.status(400).json({ message: '缺少 userId 参数' })
+      return
+    }
+    const user = usersStore.getById(userId)
+    if (!user) {
+      res.status(404).json({ message: '用户不存在' })
+      return
+    }
     const userInfo: UserInfo = {
       userId: user.id,
       username: user.username,

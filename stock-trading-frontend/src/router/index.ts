@@ -19,12 +19,24 @@ const routes: RouteRecordRaw[] = [
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('@/views/DashboardView.vue'),
+    meta: { requiresAuth: true },
   },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+router.beforeEach((to, _from, next) => {
+  if (to.meta.requiresAuth) {
+    const userId = localStorage.getItem('userId')
+    if (!userId) {
+      next('/login')
+      return
+    }
+  }
+  next()
 })
 
 export default router

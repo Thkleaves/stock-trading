@@ -2,10 +2,15 @@
 import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useMarketStore } from '@/stores/market'
+import { useOrderStore } from '@/stores/order'
+import { useTradeStore } from '@/stores/trade'
 import { api } from '@/services/api'
+import type { Order, Trade, UserInfo } from '@/types'
 
 const authStore = useAuthStore()
 const marketStore = useMarketStore()
+const orderStore = useOrderStore()
+const tradeStore = useTradeStore()
 
 const stockCode = ref('')
 const price = ref(0)
@@ -40,13 +45,20 @@ async function submitOrder(type: 'buy' | 'sell') {
 
   submitting.value = true
   try {
-    await api.post('/api/orders', {
+    const res = await api.post('/api/orders', {
       userId: authStore.token,
       stockCode: stockCode.value,
       type,
       price: price.value,
       quantity: quantity.value,
-    })
+    }) as unknown as { order: Order; trades: Trade[] }
+
+    orderStore.upsertOrder(res.order)
+    res.trades?.forEach((t: Trade) => tradeStore.addTrade(t))
+
+    const userInfo = await api.get(`/api/auth/user?userId=${authStore.token}`) as unknown as UserInfo
+    authStore.updateBalance(userInfo.balance)
+
     message.value = `${type === 'buy' ? '买入' : '卖出'}委托已提交`
     isError.value = false
   } catch (e: unknown) {

@@ -36,15 +36,19 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(username: string, password: string) {
-    const res = await api.post('/api/auth/login', { username, password })
-    const data = res.data as UserInfo
+    const data = await api.post('/api/auth/login', { username, password }) as unknown as UserInfo
     setAuth(data, data.userId)
   }
 
   async function register(username: string, password: string) {
-    const res = await api.post('/api/auth/register', { username, password })
-    const data = res.data as UserInfo
+    const data = await api.post('/api/auth/register', { username, password }) as unknown as UserInfo
     setAuth(data, data.userId)
+  }
+
+  function updateBalance(balance: number) {
+    if (user.value) {
+      user.value = { ...user.value, balance }
+    }
   }
 
   function logout() {
@@ -54,5 +58,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('user')
   }
 
-  return { user, token, isLoggedIn, initGuest, login, register, logout, restoreAuth }
+  return { user, token, isLoggedIn, initGuest, login, register, updateBalance, logout, restoreAuth }
 })
