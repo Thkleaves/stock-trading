@@ -110,4 +110,15 @@ export const ordersStore = {
   clear(): void {
     orders.clear()
   },
+
+  getAll(): Order[] {
+    return Array.from(orders.values())
+  },
+
+  loadFrom(ordersList: Order[]): void {
+    orders.clear()
+    for (const o of ordersList) {
+      orders.set(o.id, o)
+    }
+  },
 }

@@ -57,4 +57,29 @@ export const positionsStore = {
   clear(): void {
     positions.clear()
   },
+
+  getAllFlat(): PositionRecord[] {
+    const result: PositionRecord[] = []
+    for (const posList of positions.values()) {
+      for (const p of posList) {
+        if (p.quantity > 0) {
+          result.push({ ...p })
+        }
+      }
+    }
+    return result
+  },
+
+  loadFrom(posList: PositionRecord[]): void {
+    positions.clear()
+    for (const p of posList) {
+      const k = key(p.userId, p.stockCode)
+      const existing = positions.get(k)
+      if (existing) {
+        existing.push(p)
+      } else {
+        positions.set(k, [{ ...p }])
+      }
+    }
+  },
 }

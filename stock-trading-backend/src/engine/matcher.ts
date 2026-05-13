@@ -108,6 +108,15 @@ function pushEventsForUser(userId: string, trade: TradeRecord): void {
     userId,
     data: positions,
   })
+
+  const buyOrder = ordersStore.getById(trade.buyOrderId)
+  const sellOrder = ordersStore.getById(trade.sellOrderId)
+  if (buyOrder && buyOrder.userId === userId) {
+    pushEvent({ type: 'order', userId, data: buyOrder })
+  }
+  if (sellOrder && sellOrder.userId === userId) {
+    pushEvent({ type: 'order', userId, data: sellOrder })
+  }
 }
 
 function pushOrderEvent(order: Order): void {

@@ -14,6 +14,8 @@ export const useTradeStore = defineStore('trade', () => {
   }
 
   function addTrade(trade: Trade) {
+    const exists = trades.value.some((t) => t.id === trade.id)
+    if (exists) return
     trades.value.unshift(trade)
   }
 

@@ -45,4 +45,9 @@ export const tradesStore = {
   clear(): void {
     trades.length = 0
   },
+
+  loadFrom(list: TradeRecord[]): void {
+    trades.length = 0
+    trades.push(...list)
+  },
 }

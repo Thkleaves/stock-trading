@@ -54,10 +54,14 @@ async function submitOrder(type: 'buy' | 'sell') {
     }) as unknown as { order: Order; trades: Trade[] }
 
     orderStore.upsertOrder(res.order)
-    res.trades?.forEach((t: Trade) => tradeStore.addTrade(t))
 
-    const userInfo = await api.get(`/api/auth/user?userId=${authStore.token}`) as unknown as UserInfo
+    const [userInfo, tradesRes] = await Promise.all([
+      api.get(`/api/auth/user?userId=${authStore.token}`) as unknown as UserInfo,
+      api.get(`/api/trades?userId=${authStore.token}`) as unknown as { trades: Trade[] },
+    ])
     authStore.updateBalance(userInfo.balance)
+    const latest = tradesRes.trades ?? []
+    latest.forEach((t: Trade) => tradeStore.addTrade(t))
 
     message.value = `${type === 'buy' ? '买入' : '卖出'}委托已提交`
     isError.value = false

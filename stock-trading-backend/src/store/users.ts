@@ -43,4 +43,15 @@ export const usersStore = {
   clear(): void {
     users.clear()
   },
+
+  getAll(): User[] {
+    return Array.from(users.values())
+  },
+
+  loadFrom(usersList: User[]): void {
+    users.clear()
+    for (const u of usersList) {
+      users.set(u.id, u)
+    }
+  },
 }

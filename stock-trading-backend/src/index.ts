@@ -4,6 +4,7 @@ import authRouter from './routes/auth.js'
 import ordersRouter from './routes/orders.js'
 import positionsRouter from './routes/positions.js'
 import tradesRouter from './routes/trades.js'
+import { loadSnapshot, startAutoSave } from './services/snapshot.js'
 
 const app = express()
 const PORT = Number(process.env.PORT) || 3000
@@ -19,6 +20,9 @@ app.use('/api/trades', tradesRouter)
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
+
+loadSnapshot()
+startAutoSave()
 
 app.listen(PORT, () => {
   console.log(`Backend server running at http://localhost:${PORT}`)
