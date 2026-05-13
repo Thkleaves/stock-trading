@@ -1,0 +1,52 @@
+# === 依赖 ===
+node_modules/
+
+# === 构建产物 ===
+dist/
+dist-ssr/
+
+# === 日志 ===
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# === 环境变量（避免泄露密钥） ===
+.env
+.env.local
+.env.*.local
+
+# === 编辑器 & IDE ===
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# === 操作系统 ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# === TypeScript ===
+*.tsbuildinfo
+
+# === 测试 ===
+coverage/
+
+# === 临时文件 ===
+.cache/
+*.tmp
+*.temp
