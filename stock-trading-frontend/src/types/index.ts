@@ -113,3 +113,16 @@ export interface WsSyncData {
 export interface WsErrorData {
   message: string
 }
+
+export interface PnlCurveEntry {
+  date: string
+  value: number
+}
+
+export interface LoginResponse {
+  user: UserInfo
+  positions: Position[]
+  orders: Order[]
+  trades: Trade[]
+  pnlCurve: PnlCurveEntry[]
+}

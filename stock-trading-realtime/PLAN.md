@@ -51,27 +51,32 @@ stock-trading-realtime/
 ## 四、行情生成器设计（generator.ts）
 
 ### 股票初始数据
+
+> **权威数据源**：`stock-trading-backend/data/stock_master.csv`（20 只股票 + 3 个指数）。
+> 实时服务的 `STOCKS` 数组与该 CSV 保持同步，`initialPrice` = `base_price`，`volatility` 用于每 tick 的波动幅度。
+
 ```typescript
+// 以 stock_master.csv 为权威来源，共 20 股 + 3 指数
 const STOCKS = [
-  { code: '000001', name: '平安银行', price: 12.50 },
-  { code: '000002', name: '万科A',   price: 8.32 },
-  { code: '000333', name: '美的集团', price: 55.80 },
-  { code: '000651', name: '格力电器', price: 38.60 },
-  { code: '000858', name: '五粮液',   price: 148.00 },
+  { code: '600519', name: '贵州茅台', initialPrice: 1450.0, volatility: 0.22 },
+  { code: '000858', name: '五粮液',   initialPrice: 130.0,  volatility: 0.28 },
+  { code: '300750', name: '宁德时代', initialPrice: 250.0,  volatility: 0.35 },
+  { code: '002594', name: '比亚迪',   initialPrice: 280.0,  volatility: 0.3  },
+  // ... 共 23 条（含 000001 上证指数、399001 深证成指、399006 创业板指）
 ]
 ```
 
 ### 价格波动算法
 ```typescript
-// 每秒执行一次
-function tick() {
-  for (const stock of quotes) {
-    // 随机波动幅度：±0.5%
-    const changePercent = (Math.random() - 0.5) * 0.01  // -0.5% ~ +0.5%
-    const newPrice = stock.price * (1 + changePercent)
-    stock.price = round(newPrice, 2)          // 保留两位小数
-    stock.change = round(newPrice - stock.prevClose, 2)
-    stock.changePercent = round(changePercent * 100, 2)
+// 每秒执行一次，每只股票按自身 volatility 个性化波动
+function tick(quotes: Map<string, StockQuote>) {
+  for (const [code, quote] of quotes) {
+    const vol = STOCKS.find(s => s.code === code)!.volatility
+    const pct = (Math.random() - 0.5) * vol / 100     // 波动幅度由 CSV 决定
+    const newPrice = prevPrice * (1 + pct)
+    quote.price = round(newPrice, 2)
+    quote.change = round(newPrice - prevPrice, 2)
+    quote.changePercent = round(pct * 100, 2)
   }
 }
 ```

@@ -1,22 +1,36 @@
 {
   "users": [
     {
-      "id": "73aa113b-542a-4ea2-b82a-004472c0d47c",
+      "id": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
       "username": "trader1",
       "password": "123",
-      "balance": 1999799.5,
+      "balance": 996800,
+      "frozenBalance": 3200
+    },
+    {
+      "id": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "username": "trader2",
+      "password": "123",
+      "balance": 1000000,
       "frozenBalance": 0
     },
     {
-      "id": "f271b51b-bf9c-47b2-ae88-1d99a317b35e",
-      "username": "trader2",
+      "id": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "username": "trader3",
       "password": "123",
-      "balance": 0.5,
-      "frozenBalance": 200
+      "balance": 1000000,
+      "frozenBalance": 0
     },
     {
-      "id": "6e3a08eb-a707-4c7d-b6a4-3305e8dd6832",
-      "username": "trader3",
+      "id": "f5f1a765-9566-4984-9527-804ef0144d84",
+      "username": "trader4",
+      "password": "123",
+      "balance": 996917,
+      "frozenBalance": 3083
+    },
+    {
+      "id": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
+      "username": "trader5",
       "password": "123",
       "balance": 1000000,
       "frozenBalance": 0
@@ -24,202 +38,945 @@
   ],
   "orders": [
     {
-      "id": "03c0d098-55fc-40fd-8f38-bf280ceaf425",
-      "userId": "73aa113b-542a-4ea2-b82a-004472c0d47c",
-      "stockCode": "000001",
-      "type": "sell",
-      "price": 12.05,
-      "quantity": 10,
-      "filledQuantity": 10,
-      "status": "filled",
-      "createdAt": 1778708980733
-    },
-    {
-      "id": "cb1aecb5-f907-4c5b-bea7-6ad887866dc0",
-      "userId": "f271b51b-bf9c-47b2-ae88-1d99a317b35e",
-      "stockCode": "000001",
+      "id": "0ce7ce12-1726-4200-929e-b33e9aa2f101",
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "300059",
       "type": "buy",
-      "price": 12.05,
-      "quantity": 10,
-      "filledQuantity": 10,
-      "status": "filled",
-      "createdAt": 1778708998899
-    },
-    {
-      "id": "3814e275-1217-449d-9d89-b5f702e65338",
-      "userId": "73aa113b-542a-4ea2-b82a-004472c0d47c",
-      "stockCode": "000001",
-      "type": "sell",
-      "price": 15,
-      "quantity": 10,
-      "filledQuantity": 10,
-      "status": "filled",
-      "createdAt": 1778709008984
-    },
-    {
-      "id": "b7b6a95f-3c2b-415c-a5af-8d956f957b40",
-      "userId": "f271b51b-bf9c-47b2-ae88-1d99a317b35e",
-      "stockCode": "000001",
-      "type": "buy",
-      "price": 20,
-      "quantity": 10,
-      "filledQuantity": 10,
-      "status": "filled",
-      "createdAt": 1778709014830
-    },
-    {
-      "id": "80d8a88a-2513-4614-8f81-8523a063a854",
-      "userId": "f271b51b-bf9c-47b2-ae88-1d99a317b35e",
-      "stockCode": "000001",
-      "type": "buy",
-      "price": 20,
-      "quantity": 10,
+      "price": 32,
+      "quantity": 100,
       "filledQuantity": 0,
       "status": "pending",
-      "createdAt": 1778709015683
+      "createdAt": 1778776079639
     },
     {
-      "id": "f25dd95d-99bb-460e-ab5a-c3c200f3c727",
-      "userId": "f271b51b-bf9c-47b2-ae88-1d99a317b35e",
-      "stockCode": "000001",
+      "id": "85bbec74-421f-47b8-be64-51f9999db80b",
+      "userId": "f5f1a765-9566-4984-9527-804ef0144d84",
+      "stockCode": "300059",
       "type": "buy",
-      "price": 999529,
-      "quantity": 1,
-      "filledQuantity": 1,
-      "status": "filled",
-      "createdAt": 1778709080394
-    },
-    {
-      "id": "c6f5f2a0-7c98-45f1-9da2-d914250cceb1",
-      "userId": "73aa113b-542a-4ea2-b82a-004472c0d47c",
-      "stockCode": "000001",
-      "type": "sell",
-      "price": 13,
-      "quantity": 1,
-      "filledQuantity": 1,
-      "status": "filled",
-      "createdAt": 1778709108941
+      "price": 30.83,
+      "quantity": 100,
+      "filledQuantity": 0,
+      "status": "pending",
+      "createdAt": 1778777480003
     }
   ],
   "positions": [
     {
-      "userId": "73aa113b-542a-4ea2-b82a-004472c0d47c",
-      "stockCode": "000001",
-      "quantity": 79,
-      "avgPrice": 12.5
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "600519",
+      "quantity": 10000,
+      "avgPrice": 1450
     },
     {
-      "userId": "73aa113b-542a-4ea2-b82a-004472c0d47c",
-      "stockCode": "000002",
-      "quantity": 100,
-      "avgPrice": 8.32
-    },
-    {
-      "userId": "73aa113b-542a-4ea2-b82a-004472c0d47c",
-      "stockCode": "000333",
-      "quantity": 100,
-      "avgPrice": 55.8
-    },
-    {
-      "userId": "73aa113b-542a-4ea2-b82a-004472c0d47c",
-      "stockCode": "000651",
-      "quantity": 100,
-      "avgPrice": 38.6
-    },
-    {
-      "userId": "73aa113b-542a-4ea2-b82a-004472c0d47c",
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
       "stockCode": "000858",
-      "quantity": 100,
-      "avgPrice": 148
+      "quantity": 10000,
+      "avgPrice": 130
     },
     {
-      "userId": "f271b51b-bf9c-47b2-ae88-1d99a317b35e",
-      "stockCode": "000001",
-      "quantity": 121,
-      "avgPrice": 8273.136363636364
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "300750",
+      "quantity": 10000,
+      "avgPrice": 250
     },
     {
-      "userId": "f271b51b-bf9c-47b2-ae88-1d99a317b35e",
-      "stockCode": "000002",
-      "quantity": 100,
-      "avgPrice": 8.32
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "002594",
+      "quantity": 10000,
+      "avgPrice": 280
     },
     {
-      "userId": "f271b51b-bf9c-47b2-ae88-1d99a317b35e",
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "601318",
+      "quantity": 10000,
+      "avgPrice": 50
+    },
+    {
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "600036",
+      "quantity": 10000,
+      "avgPrice": 42
+    },
+    {
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
       "stockCode": "000333",
-      "quantity": 100,
-      "avgPrice": 55.8
+      "quantity": 10000,
+      "avgPrice": 72
     },
     {
-      "userId": "f271b51b-bf9c-47b2-ae88-1d99a317b35e",
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
       "stockCode": "000651",
-      "quantity": 100,
-      "avgPrice": 38.6
+      "quantity": 10000,
+      "avgPrice": 42
     },
     {
-      "userId": "f271b51b-bf9c-47b2-ae88-1d99a317b35e",
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "600276",
+      "quantity": 10000,
+      "avgPrice": 48
+    },
+    {
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "000725",
+      "quantity": 10000,
+      "avgPrice": 4.5
+    },
+    {
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "002415",
+      "quantity": 10000,
+      "avgPrice": 33
+    },
+    {
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "300059",
+      "quantity": 10000,
+      "avgPrice": 22
+    },
+    {
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "601012",
+      "quantity": 10000,
+      "avgPrice": 16
+    },
+    {
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "600900",
+      "quantity": 10000,
+      "avgPrice": 29
+    },
+    {
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "002475",
+      "quantity": 10000,
+      "avgPrice": 40
+    },
+    {
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "601899",
+      "quantity": 10000,
+      "avgPrice": 18
+    },
+    {
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "000063",
+      "quantity": 10000,
+      "avgPrice": 38
+    },
+    {
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "600809",
+      "quantity": 10000,
+      "avgPrice": 200
+    },
+    {
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "300124",
+      "quantity": 10000,
+      "avgPrice": 65
+    },
+    {
+      "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
+      "stockCode": "002230",
+      "quantity": 10000,
+      "avgPrice": 50
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "600519",
+      "quantity": 10000,
+      "avgPrice": 1450
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
       "stockCode": "000858",
-      "quantity": 100,
-      "avgPrice": 148
+      "quantity": 10000,
+      "avgPrice": 130
     },
     {
-      "userId": "6e3a08eb-a707-4c7d-b6a4-3305e8dd6832",
-      "stockCode": "000001",
-      "quantity": 100,
-      "avgPrice": 12.5
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "300750",
+      "quantity": 10000,
+      "avgPrice": 250
     },
     {
-      "userId": "6e3a08eb-a707-4c7d-b6a4-3305e8dd6832",
-      "stockCode": "000002",
-      "quantity": 100,
-      "avgPrice": 8.32
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "002594",
+      "quantity": 10000,
+      "avgPrice": 280
     },
     {
-      "userId": "6e3a08eb-a707-4c7d-b6a4-3305e8dd6832",
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "601318",
+      "quantity": 10000,
+      "avgPrice": 50
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "600036",
+      "quantity": 10000,
+      "avgPrice": 42
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
       "stockCode": "000333",
-      "quantity": 100,
-      "avgPrice": 55.8
+      "quantity": 10000,
+      "avgPrice": 72
     },
     {
-      "userId": "6e3a08eb-a707-4c7d-b6a4-3305e8dd6832",
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
       "stockCode": "000651",
-      "quantity": 100,
-      "avgPrice": 38.6
+      "quantity": 10000,
+      "avgPrice": 42
     },
     {
-      "userId": "6e3a08eb-a707-4c7d-b6a4-3305e8dd6832",
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "600276",
+      "quantity": 10000,
+      "avgPrice": 48
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "000725",
+      "quantity": 10000,
+      "avgPrice": 4.5
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "002415",
+      "quantity": 10000,
+      "avgPrice": 33
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "300059",
+      "quantity": 10000,
+      "avgPrice": 22
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "601012",
+      "quantity": 10000,
+      "avgPrice": 16
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "600900",
+      "quantity": 10000,
+      "avgPrice": 29
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "002475",
+      "quantity": 10000,
+      "avgPrice": 40
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "601899",
+      "quantity": 10000,
+      "avgPrice": 18
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "000063",
+      "quantity": 10000,
+      "avgPrice": 38
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "600809",
+      "quantity": 10000,
+      "avgPrice": 200
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "300124",
+      "quantity": 10000,
+      "avgPrice": 65
+    },
+    {
+      "userId": "f260f822-a7b6-4324-807d-c8e3ea322455",
+      "stockCode": "002230",
+      "quantity": 10000,
+      "avgPrice": 50
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "600519",
+      "quantity": 10000,
+      "avgPrice": 1450
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
       "stockCode": "000858",
-      "quantity": 100,
-      "avgPrice": 148
+      "quantity": 10000,
+      "avgPrice": 130
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "300750",
+      "quantity": 10000,
+      "avgPrice": 250
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "002594",
+      "quantity": 10000,
+      "avgPrice": 280
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "601318",
+      "quantity": 10000,
+      "avgPrice": 50
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "600036",
+      "quantity": 10000,
+      "avgPrice": 42
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "000333",
+      "quantity": 10000,
+      "avgPrice": 72
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "000651",
+      "quantity": 10000,
+      "avgPrice": 42
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "600276",
+      "quantity": 10000,
+      "avgPrice": 48
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "000725",
+      "quantity": 10000,
+      "avgPrice": 4.5
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "002415",
+      "quantity": 10000,
+      "avgPrice": 33
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "300059",
+      "quantity": 10000,
+      "avgPrice": 22
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "601012",
+      "quantity": 10000,
+      "avgPrice": 16
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "600900",
+      "quantity": 10000,
+      "avgPrice": 29
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "002475",
+      "quantity": 10000,
+      "avgPrice": 40
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "601899",
+      "quantity": 10000,
+      "avgPrice": 18
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "000063",
+      "quantity": 10000,
+      "avgPrice": 38
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "600809",
+      "quantity": 10000,
+      "avgPrice": 200
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "300124",
+      "quantity": 10000,
+      "avgPrice": 65
+    },
+    {
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "002230",
+      "quantity": 10000,
+      "avgPrice": 50
+    },
+    {
+      "userId": "f5f1a765-9566-4984-9527-804ef0144d84",
+      "stockCode": "002594",
+      "quantity": 1000,
+      "avgPrice": 280
+    },
+    {
+      "userId": "f5f1a765-9566-4984-9527-804ef0144d84",
+      "stockCode": "000651",
+      "quantity": 1000,
+      "avgPrice": 42
+    },
+    {
+      "userId": "f5f1a765-9566-4984-9527-804ef0144d84",
+      "stockCode": "600036",
+      "quantity": 1000,
+      "avgPrice": 42
+    },
+    {
+      "userId": "f5f1a765-9566-4984-9527-804ef0144d84",
+      "stockCode": "300124",
+      "quantity": 1000,
+      "avgPrice": 65
+    },
+    {
+      "userId": "f5f1a765-9566-4984-9527-804ef0144d84",
+      "stockCode": "300750",
+      "quantity": 1000,
+      "avgPrice": 250
+    },
+    {
+      "userId": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
+      "stockCode": "601899",
+      "quantity": 1000,
+      "avgPrice": 18
+    },
+    {
+      "userId": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
+      "stockCode": "000725",
+      "quantity": 1000,
+      "avgPrice": 4.5
+    },
+    {
+      "userId": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
+      "stockCode": "000333",
+      "quantity": 1000,
+      "avgPrice": 72
+    },
+    {
+      "userId": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
+      "stockCode": "002594",
+      "quantity": 1000,
+      "avgPrice": 280
+    },
+    {
+      "userId": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
+      "stockCode": "601012",
+      "quantity": 1000,
+      "avgPrice": 16
     }
   ],
-  "trades": [
-    {
-      "id": "bbc36068-674d-4a00-b1b2-57344c833871",
-      "buyOrderId": "cb1aecb5-f907-4c5b-bea7-6ad887866dc0",
-      "sellOrderId": "03c0d098-55fc-40fd-8f38-bf280ceaf425",
-      "stockCode": "000001",
-      "price": 12.05,
-      "quantity": 10,
-      "time": 1778708998900
-    },
-    {
-      "id": "c3d76e85-37f2-47fa-9135-b70a9f1dd754",
-      "buyOrderId": "b7b6a95f-3c2b-415c-a5af-8d956f957b40",
-      "sellOrderId": "3814e275-1217-449d-9d89-b5f702e65338",
-      "stockCode": "000001",
-      "price": 15,
-      "quantity": 10,
-      "time": 1778709014830
-    },
-    {
-      "id": "59574d50-11b8-447f-a166-edd093f5a67c",
-      "buyOrderId": "f25dd95d-99bb-460e-ab5a-c3c200f3c727",
-      "sellOrderId": "c6f5f2a0-7c98-45f1-9da2-d914250cceb1",
-      "stockCode": "000001",
-      "price": 999529,
-      "quantity": 1,
-      "time": 1778709108941
-    }
-  ]
+  "trades": [],
+  "pnlCurves": {
+    "f260f822-a7b6-4324-807d-c8e3ea322455": [
+      {
+        "date": "2025-11-21",
+        "value": 11437100
+      },
+      {
+        "date": "2025-11-24",
+        "value": 11419600
+      },
+      {
+        "date": "2025-11-25",
+        "value": 11534800
+      },
+      {
+        "date": "2025-11-26",
+        "value": 10820300
+      },
+      {
+        "date": "2025-11-27",
+        "value": 10870600
+      },
+      {
+        "date": "2025-11-28",
+        "value": 11364700
+      },
+      {
+        "date": "2025-12-01",
+        "value": 11527800
+      },
+      {
+        "date": "2025-12-02",
+        "value": 11816400
+      },
+      {
+        "date": "2025-12-03",
+        "value": 11638400
+      },
+      {
+        "date": "2025-12-04",
+        "value": 11819500
+      },
+      {
+        "date": "2025-12-05",
+        "value": 12150600
+      },
+      {
+        "date": "2025-12-08",
+        "value": 11905200
+      },
+      {
+        "date": "2025-12-09",
+        "value": 12221000
+      },
+      {
+        "date": "2025-12-10",
+        "value": 12540000
+      },
+      {
+        "date": "2025-12-11",
+        "value": 12834100
+      },
+      {
+        "date": "2025-12-12",
+        "value": 13239300
+      },
+      {
+        "date": "2025-12-15",
+        "value": 13345500
+      },
+      {
+        "date": "2025-12-16",
+        "value": 13472000
+      },
+      {
+        "date": "2025-12-17",
+        "value": 13954400
+      },
+      {
+        "date": "2025-12-18",
+        "value": 13068700
+      },
+      {
+        "date": "2025-12-19",
+        "value": 13180200
+      },
+      {
+        "date": "2025-12-22",
+        "value": 12847600
+      },
+      {
+        "date": "2025-12-23",
+        "value": 12582400
+      },
+      {
+        "date": "2025-12-24",
+        "value": 12699100
+      },
+      {
+        "date": "2025-12-25",
+        "value": 12823100
+      },
+      {
+        "date": "2025-12-26",
+        "value": 12574300
+      },
+      {
+        "date": "2025-12-29",
+        "value": 12570400
+      },
+      {
+        "date": "2025-12-30",
+        "value": 11998100
+      },
+      {
+        "date": "2025-12-31",
+        "value": 11541500
+      },
+      {
+        "date": "2026-01-02",
+        "value": 11499000
+      }
+    ],
+    "e9aaa2c7-e316-418d-939d-abcae6171aea": [
+      {
+        "date": "2025-11-21",
+        "value": 11437100
+      },
+      {
+        "date": "2025-11-24",
+        "value": 11419600
+      },
+      {
+        "date": "2025-11-25",
+        "value": 11534800
+      },
+      {
+        "date": "2025-11-26",
+        "value": 10820300
+      },
+      {
+        "date": "2025-11-27",
+        "value": 10870600
+      },
+      {
+        "date": "2025-11-28",
+        "value": 11364700
+      },
+      {
+        "date": "2025-12-01",
+        "value": 11527800
+      },
+      {
+        "date": "2025-12-02",
+        "value": 11816400
+      },
+      {
+        "date": "2025-12-03",
+        "value": 11638400
+      },
+      {
+        "date": "2025-12-04",
+        "value": 11819500
+      },
+      {
+        "date": "2025-12-05",
+        "value": 12150600
+      },
+      {
+        "date": "2025-12-08",
+        "value": 11905200
+      },
+      {
+        "date": "2025-12-09",
+        "value": 12221000
+      },
+      {
+        "date": "2025-12-10",
+        "value": 12540000
+      },
+      {
+        "date": "2025-12-11",
+        "value": 12834100
+      },
+      {
+        "date": "2025-12-12",
+        "value": 13239300
+      },
+      {
+        "date": "2025-12-15",
+        "value": 13345500
+      },
+      {
+        "date": "2025-12-16",
+        "value": 13472000
+      },
+      {
+        "date": "2025-12-17",
+        "value": 13954400
+      },
+      {
+        "date": "2025-12-18",
+        "value": 13068700
+      },
+      {
+        "date": "2025-12-19",
+        "value": 13180200
+      },
+      {
+        "date": "2025-12-22",
+        "value": 12847600
+      },
+      {
+        "date": "2025-12-23",
+        "value": 12582400
+      },
+      {
+        "date": "2025-12-24",
+        "value": 12699100
+      },
+      {
+        "date": "2025-12-25",
+        "value": 12823100
+      },
+      {
+        "date": "2025-12-26",
+        "value": 12574300
+      },
+      {
+        "date": "2025-12-29",
+        "value": 12570400
+      },
+      {
+        "date": "2025-12-30",
+        "value": 11998100
+      },
+      {
+        "date": "2025-12-31",
+        "value": 11541500
+      },
+      {
+        "date": "2026-01-02",
+        "value": 11499000
+      }
+    ],
+    "f5f1a765-9566-4984-9527-804ef0144d84": [
+      {
+        "date": "2025-11-21",
+        "value": 286670
+      },
+      {
+        "date": "2025-11-24",
+        "value": 281770
+      },
+      {
+        "date": "2025-11-25",
+        "value": 273220
+      },
+      {
+        "date": "2025-11-26",
+        "value": 272240
+      },
+      {
+        "date": "2025-11-27",
+        "value": 249070
+      },
+      {
+        "date": "2025-11-28",
+        "value": 238740
+      },
+      {
+        "date": "2025-12-01",
+        "value": 245920
+      },
+      {
+        "date": "2025-12-02",
+        "value": 244220
+      },
+      {
+        "date": "2025-12-03",
+        "value": 231080
+      },
+      {
+        "date": "2025-12-04",
+        "value": 225510
+      },
+      {
+        "date": "2025-12-05",
+        "value": 217220
+      },
+      {
+        "date": "2025-12-08",
+        "value": 208370
+      },
+      {
+        "date": "2025-12-09",
+        "value": 210480
+      },
+      {
+        "date": "2025-12-10",
+        "value": 217110
+      },
+      {
+        "date": "2025-12-11",
+        "value": 215330
+      },
+      {
+        "date": "2025-12-12",
+        "value": 223990
+      },
+      {
+        "date": "2025-12-15",
+        "value": 216670
+      },
+      {
+        "date": "2025-12-16",
+        "value": 233630
+      },
+      {
+        "date": "2025-12-17",
+        "value": 230600
+      },
+      {
+        "date": "2025-12-18",
+        "value": 208910
+      },
+      {
+        "date": "2025-12-19",
+        "value": 205230
+      },
+      {
+        "date": "2025-12-22",
+        "value": 211130
+      },
+      {
+        "date": "2025-12-23",
+        "value": 201570
+      },
+      {
+        "date": "2025-12-24",
+        "value": 186930
+      },
+      {
+        "date": "2025-12-25",
+        "value": 197520
+      },
+      {
+        "date": "2025-12-26",
+        "value": 185060
+      },
+      {
+        "date": "2025-12-29",
+        "value": 201870
+      },
+      {
+        "date": "2025-12-30",
+        "value": 196610
+      },
+      {
+        "date": "2025-12-31",
+        "value": 177320
+      },
+      {
+        "date": "2026-01-02",
+        "value": 172260
+      }
+    ],
+    "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77": [
+      {
+        "date": "2025-11-21",
+        "value": 229590
+      },
+      {
+        "date": "2025-11-24",
+        "value": 227280
+      },
+      {
+        "date": "2025-11-25",
+        "value": 220970
+      },
+      {
+        "date": "2025-11-26",
+        "value": 212280
+      },
+      {
+        "date": "2025-11-27",
+        "value": 207160
+      },
+      {
+        "date": "2025-11-28",
+        "value": 200780
+      },
+      {
+        "date": "2025-12-01",
+        "value": 202970
+      },
+      {
+        "date": "2025-12-02",
+        "value": 196170
+      },
+      {
+        "date": "2025-12-03",
+        "value": 180860
+      },
+      {
+        "date": "2025-12-04",
+        "value": 184580
+      },
+      {
+        "date": "2025-12-05",
+        "value": 175220
+      },
+      {
+        "date": "2025-12-08",
+        "value": 163220
+      },
+      {
+        "date": "2025-12-09",
+        "value": 166060
+      },
+      {
+        "date": "2025-12-10",
+        "value": 169640
+      },
+      {
+        "date": "2025-12-11",
+        "value": 160820
+      },
+      {
+        "date": "2025-12-12",
+        "value": 175670
+      },
+      {
+        "date": "2025-12-15",
+        "value": 157080
+      },
+      {
+        "date": "2025-12-16",
+        "value": 174540
+      },
+      {
+        "date": "2025-12-17",
+        "value": 167410
+      },
+      {
+        "date": "2025-12-18",
+        "value": 151500
+      },
+      {
+        "date": "2025-12-19",
+        "value": 149990
+      },
+      {
+        "date": "2025-12-22",
+        "value": 153250
+      },
+      {
+        "date": "2025-12-23",
+        "value": 137500
+      },
+      {
+        "date": "2025-12-24",
+        "value": 137400
+      },
+      {
+        "date": "2025-12-25",
+        "value": 137650
+      },
+      {
+        "date": "2025-12-26",
+        "value": 130560
+      },
+      {
+        "date": "2025-12-29",
+        "value": 147860
+      },
+      {
+        "date": "2025-12-30",
+        "value": 150540
+      },
+      {
+        "date": "2025-12-31",
+        "value": 137790
+      },
+      {
+        "date": "2026-01-02",
+        "value": 129570
+      }
+    ]
+  },
+  "pnlInitialAssets": {
+    "f260f822-a7b6-4324-807d-c8e3ea322455": 29795000,
+    "e9aaa2c7-e316-418d-939d-abcae6171aea": 29795000,
+    "f5f1a765-9566-4984-9527-804ef0144d84": 1679000,
+    "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77": 1390500
+  }
 }

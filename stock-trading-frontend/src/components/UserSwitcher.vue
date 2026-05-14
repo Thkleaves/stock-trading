@@ -61,7 +61,7 @@ function handleDelete(session: StoredSession, event: Event) {
 
 function handleAddAccount() {
   closeDropdown()
-  router.push('/login?add=1')
+  router.push('/login')
 }
 
 async function handleLogout() {

@@ -5,12 +5,14 @@ import { useSimulation } from '@/composables/useSimulation'
 import { useAuthStore } from '@/stores/auth'
 import { usePositionStore } from '@/stores/position'
 import { useTradeStore } from '@/stores/trade'
+import { usePnlCurveStore } from '@/stores/pnlCurve'
 
 const { isDark } = useTheme()
 const { currentPrices, stockRefs } = useSimulation()
 const authStore = useAuthStore()
 const positionStore = usePositionStore()
 const tradeStore = useTradeStore()
+const pnlCurveStore = usePnlCurveStore()
 
 const activeTab = ref<'positions' | 'trades'>('positions')
 
@@ -25,12 +27,6 @@ function formatTime(ts: number): string {
 }
 
 function formatMoney(v: number): string {
-  const abs = Math.abs(v)
-  if (abs >= 1e8) {
-    return (v / 1e8).toFixed(2) + '亿'
-  } else if (abs >= 1e4) {
-    return (v / 1e4).toFixed(2) + '万'
-  }
   return v.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
@@ -84,6 +80,8 @@ const outlineCards = computed(() => [
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
+const pnlCurveData = computed(() => pnlCurveStore.data)
+
 function drawPnlCurve() {
   const canvas = canvasRef.value
   if (!canvas) return
@@ -120,7 +118,7 @@ function drawPnlCurve() {
   ctx.fillStyle = tc.bg
   ctx.fillRect(0, 0, w, h)
 
-  const data: { date: string; value: number }[] = []
+  const data = pnlCurveData.value
   if (data.length < 2) return
 
   const values = data.map((d) => d.value)
@@ -165,9 +163,7 @@ function drawPnlCurve() {
   ctx.beginPath()
   ctx.moveTo(scaleX(0), scaleY(values[0]))
   for (let i = 1; i < values.length; i++) {
-    const cx1 = scaleX(i - 1) + pw / data.length / 2
-    const cx2 = scaleX(i) - pw / data.length / 2
-    ctx.bezierCurveTo(cx1, scaleY(values[i - 1]), cx2, scaleY(values[i]), scaleX(i), scaleY(values[i]))
+    ctx.lineTo(scaleX(i), scaleY(values[i]))
   }
 
   ctx.strokeStyle = tc.line
@@ -208,6 +204,10 @@ onUnmounted(() => {
 watch(isDark, () => {
   nextTick(() => drawPnlCurve())
 })
+
+watch(pnlCurveData, () => {
+  nextTick(() => drawPnlCurve())
+}, { deep: false })
 </script>
 
 <template>

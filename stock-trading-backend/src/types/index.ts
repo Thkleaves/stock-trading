@@ -1,3 +1,11 @@
+import { readFileSync } from 'node:fs'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const STOCKS_CSV_PATH = join(__dirname, '..', '..', 'data', 'stock_master.csv')
+
 export interface User {
   id: string
   username: string
@@ -82,21 +90,40 @@ export interface CreateOrderRequest {
   quantity: number
 }
 
+export interface PnlCurveEntry {
+  date: string
+  value: number
+}
+
 export type RealtimeEvent =
   | { type: 'order'; userId: string; eventSeq: number; data: Order }
   | { type: 'position'; userId: string; eventSeq: number; data: PositionResponse[] }
   | { type: 'trade'; userId: string; eventSeq: number; data: TradeResponse }
   | { type: 'user'; userId: string; eventSeq: number; data: UserInfo }
 
-export const STOCKS: Stock[] = [
-  { code: '000001', name: '平安银行', initialPrice: 12.50 },
-  { code: '000002', name: '万科A', initialPrice: 8.32 },
-  { code: '000333', name: '美的集团', initialPrice: 55.80 },
-  { code: '000651', name: '格力电器', initialPrice: 38.60 },
-  { code: '000858', name: '五粮液', initialPrice: 148.00 },
-]
-
 export const INITIAL_BALANCE = 1_000_000
+export const INITIAL_STOCK_SHARES = 1000
+export const INITIAL_STOCK_COUNT = 5
+
+export let STOCKS: Stock[] = []
+
+export function loadStocksFromCsv(): void {
+  const raw = readFileSync(STOCKS_CSV_PATH, 'utf-8')
+  const lines = raw.trim().split('\n')
+  STOCKS = []
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',')
+    if (cols.length < 4) continue
+    const type = cols[2].trim()
+    if (type !== 'stock') continue
+    STOCKS.push({
+      code: cols[0].trim(),
+      name: cols[1].trim(),
+      initialPrice: parseFloat(cols[3]),
+    })
+  }
+  console.log(`[stocks] 从 stock_master.csv 加载了 ${STOCKS.length} 只股票`)
+}
 
 export function getStockByCode(code: string): Stock | undefined {
   return STOCKS.find((s) => s.code === code)

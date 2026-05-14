@@ -2,6 +2,11 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/services/api'
 import { marketWebSocket } from '@/services/websocket'
+import { usePositionStore } from '@/stores/position'
+import { useOrderStore } from '@/stores/order'
+import { useTradeStore } from '@/stores/trade'
+import { usePnlCurveStore } from '@/stores/pnlCurve'
+import type { LoginResponse } from '@/types'
 
 export interface LoginParams {
   username: string
@@ -24,12 +29,20 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => !!userId.value)
 
+  function populateStores(data: LoginResponse) {
+    usePositionStore().setPositions(data.positions ?? [])
+    useOrderStore().setOrders(data.orders ?? [])
+    useTradeStore().setTrades(data.trades ?? [])
+    usePnlCurveStore().setData(data.pnlCurve ?? [])
+  }
+
   async function login(params: LoginParams): Promise<{ ok: boolean; message?: string }> {
     try {
-      const data = await api.post('/api/auth/login', params) as unknown as UserData
-      if (data && data.userId) {
-        applyUserData(data)
-        marketWebSocket.connect(data.userId)
+      const data = await api.post('/api/auth/login', params) as unknown as LoginResponse
+      if (data?.user?.userId) {
+        applyUserData(data.user)
+        populateStores(data)
+        marketWebSocket.connect(data.user.userId)
         return { ok: true }
       }
       return { ok: false, message: '登录失败' }
@@ -40,10 +53,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function reg(params: LoginParams): Promise<{ ok: boolean; message?: string }> {
     try {
-      const data = await api.post('/api/auth/register', params) as unknown as UserData
-      if (data && data.userId) {
-        applyUserData(data)
-        marketWebSocket.connect(data.userId)
+      const data = await api.post('/api/auth/register', params) as unknown as LoginResponse
+      if (data?.user?.userId) {
+        applyUserData(data.user)
+        populateStores(data)
+        marketWebSocket.connect(data.user.userId)
         return { ok: true }
       }
       return { ok: false, message: '注册失败' }
@@ -80,6 +94,10 @@ export const useAuthStore = defineStore('auth', () => {
     username.value = ''
     balance.value = 0
     frozenBalance.value = 0
+    usePositionStore().setPositions([])
+    useOrderStore().setOrders([])
+    useTradeStore().setTrades([])
+    usePnlCurveStore().clear()
   }
 
   function applyUserData(data: UserData) {

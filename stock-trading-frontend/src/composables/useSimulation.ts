@@ -1,5 +1,6 @@
 import { ref, reactive } from 'vue'
 import { parseCSV } from '@/utils/csv'
+import { useMarketStore } from '@/stores/market'
 
 export interface TickPoint {
   time: string
@@ -344,7 +345,64 @@ async function loadAllData() {
   isLoaded.value = true
 }
 
+function isWebSocketActive(): boolean {
+  try {
+    const marketStore = useMarketStore()
+    return Object.keys(marketStore.quotes).length > 0
+  } catch {
+    return false
+  }
+}
+
+function tickFromWebSocket() {
+  const now = new Date()
+  currentTime.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
+  currentDate.value = now.toISOString().split('T')[0]
+
+  const marketStore = useMarketStore()
+  for (const [code, quote] of Object.entries(marketStore.quotes)) {
+    if (!stockRefs.value[code]) {
+      const isIndex = code === '000001' || code === '399001' || code === '399006'
+      stockRefs.value[code] = {
+        code,
+        name: quote.name,
+        open: quote.price,
+        high: quote.price,
+        low: quote.price,
+        preClose: quote.price,
+        type: isIndex ? 'index' : 'stock',
+      }
+    }
+
+    const prevPrice = currentPrices[code]
+    currentPrices[code] = quote.price
+
+    if (prevPrice !== undefined && prevPrice !== quote.price) {
+      const ref = stockRefs.value[code]
+      if (ref.type === 'stock') {
+        if (!stockTicks[code]) stockTicks[code] = []
+        stockTicks[code].push({
+          time: currentTime.value,
+          price: quote.price,
+          volume: 0,
+        })
+      } else {
+        indexTicks.value.push({
+          time: currentTime.value,
+          price: quote.price,
+          volume: 0,
+        })
+      }
+    }
+  }
+}
+
 function tick() {
+  if (isWebSocketActive()) {
+    tickFromWebSocket()
+    return
+  }
+
   const sec = engine.advance()
   if (sec === null) {
     stop()
@@ -409,6 +467,18 @@ function stop() {
 
 function resetAndStart() {
   stop()
+
+  if (isWebSocketActive()) {
+    currentTime.value = `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}:${String(new Date().getSeconds()).padStart(2, '0')}`
+    currentDate.value = new Date().toISOString().split('T')[0]
+    for (const code of Object.keys(stockTicks)) {
+      stockTicks[code] = []
+    }
+    indexTicks.value = []
+    start()
+    return
+  }
+
   engine.reset()
   currentTime.value = '09:30:00'
   for (const code of engine.getStocks()) {
@@ -427,6 +497,8 @@ const SIM_STATE_KEY = 'trading_sim_state'
 let initPromise: Promise<void> | null = null
 
 function fastForward(sec: number) {
+  if (isWebSocketActive()) return
+
   for (let i = 0; i < sec; i++) {
     const s = engine.advance()
     if (s === null) break
@@ -454,12 +526,20 @@ function fastForward(sec: number) {
       })
     }
   }
-  currentTime.value = secondToTime(engine.getCurrentSecond())
+  currentTime.value = secondToTime(engine.getSecond())
 }
 
 function init() {
   if (initPromise) return initPromise
   initPromise = loadAllData().then(() => {
+    if (isWebSocketActive()) {
+      currentTime.value = `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}:${String(new Date().getSeconds()).padStart(2, '0')}`
+      currentDate.value = new Date().toISOString().split('T')[0]
+      localStorage.removeItem(SIM_STATE_KEY)
+      start()
+      return
+    }
+
     const saved = localStorage.getItem(SIM_STATE_KEY)
     if (saved) {
       try {

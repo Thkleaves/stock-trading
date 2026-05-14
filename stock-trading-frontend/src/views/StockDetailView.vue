@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { ChartMode } from '@/data/mock'
 import type { Order } from '@/types'
@@ -49,6 +49,193 @@ const stockInfo = computed(() => {
   }
 })
 
+function simpleHash(str: string): number {
+  let h = 0
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h + str.charCodeAt(i)) | 0
+  }
+  return Math.abs(h)
+}
+
+function toFloat(n: number, digits = 2): number {
+  return +n.toFixed(digits)
+}
+
+function formatNum(n: number, digits = 2): string {
+  if (n >= 1e8) return (n / 1e8).toFixed(digits) + '亿'
+  if (n >= 1e4) return (n / 1e4).toFixed(digits) + '万'
+  return n.toFixed(digits)
+}
+
+interface DepthLevel {
+  price: number
+  volume: number
+}
+
+interface SimulatedTrade {
+  id: number
+  time: string
+  price: number
+  volume: number
+  type: 'buy' | 'sell'
+}
+
+function getPriceTick(price: number): number {
+  if (price >= 100) return 0.05
+  if (price >= 10) return 0.01
+  return 0.001
+}
+
+function seededRandom(seed: number): () => number {
+  let s = seed
+  return () => {
+    s = (s * 1103515245 + 12345) & 0x7fffffff
+    return s / 0x7fffffff
+  }
+}
+
+const depthLevels = computed<{ bids: DepthLevel[]; asks: DepthLevel[] }>(() => {
+  const price = stockInfo.value?.price ?? 0
+  if (price <= 0) return { bids: [], asks: [] }
+
+  const tick = getPriceTick(price)
+  const hash = simpleHash(stockCode.value)
+  const rnd = seededRandom(hash + Math.floor(Date.now() / 5000))
+
+  const bids: DepthLevel[] = []
+  for (let i = 0; i < 5; i++) {
+    const offset = (i + 1) * tick + rnd() * tick * 0.5
+    const vol = Math.floor(100 + rnd() * 5000 + i * 800)
+    bids.push({ price: +(price - offset).toFixed(3), volume: vol - (vol % 100) })
+  }
+
+  const asks: DepthLevel[] = []
+  for (let i = 0; i < 5; i++) {
+    const offset = (i + 1) * tick + rnd() * tick * 0.5
+    const vol = Math.floor(100 + rnd() * 5000 + i * 800)
+    asks.push({ price: +(price + offset).toFixed(3), volume: vol - (vol % 100) })
+  }
+
+  return { bids, asks }
+})
+
+function getDepthPrecision(price: number): number {
+  if (price >= 100) return 2
+  if (price >= 10) return 2
+  return 3
+}
+
+const MAX_TRADES = 15
+const simulatedTrades = ref<SimulatedTrade[]>([])
+let tradeSeq = 0
+let tradeTimer: ReturnType<typeof setInterval> | null = null
+
+function generateMockTrade() {
+  const price = stockInfo.value?.price ?? 0
+  if (price <= 0) return
+
+  const tick = getPriceTick(price)
+  const hash = simpleHash(stockCode.value)
+  const rnd = seededRandom(hash * tradeSeq + Date.now())
+  tradeSeq++
+
+  const priceOffset = (rnd() - 0.5) * tick * 2
+  const tradeType: 'buy' | 'sell' = rnd() > 0.5 ? 'buy' : 'sell'
+  const volume = Math.floor((100 + rnd() * 2000) / 100) * 100
+
+  const simTime = currentTime.value
+  const timeStr = simTime.length >= 5 ? simTime.slice(0, 5) : simTime
+
+  const trade: SimulatedTrade = {
+    id: tradeSeq,
+    time: timeStr,
+    price: +(price + priceOffset).toFixed(getDepthPrecision(price)),
+    volume,
+    type: tradeType,
+  }
+
+  simulatedTrades.value = [trade, ...simulatedTrades.value].slice(0, MAX_TRADES)
+}
+
+function scheduleNextTrade() {
+  if (!tradeTimer) return
+  const delay = 1500 + Math.random() * 2500
+  tradeTimer = setTimeout(() => {
+    generateMockTrade()
+    scheduleNextTrade()
+  }, delay)
+}
+
+function startTradeSimulation() {
+  stopTradeSimulation()
+  tradeTimer = setTimeout(() => {
+    generateMockTrade()
+    scheduleNextTrade()
+  }, 500)
+}
+
+function stopTradeSimulation() {
+  if (tradeTimer) {
+    clearTimeout(tradeTimer)
+    tradeTimer = null
+  }
+}
+
+onMounted(() => {
+  startTradeSimulation()
+})
+
+onUnmounted(() => {
+  stopTradeSimulation()
+})
+
+const stockDetail = computed(() => {
+  const code = stockCode.value
+  const ref = stockRefs.value[code]
+  if (!ref) return null
+
+  const ticks = stockTicks[code] || []
+  const price = currentPrices[code] ?? ref.open
+  const hash = simpleHash(code)
+
+  const totalVolume = ticks.reduce((s, t) => s + t.volume, 0)
+  const totalAmount = ticks.reduce((s, t) => s + t.price * t.volume, 0)
+
+  const totalSharesBase = 100000000 + (hash % 100) * 100000000
+  const totalShares = totalSharesBase
+  const tradableRatio = 0.5 + (hash % 31) / 100
+  const tradableShares = Math.floor(totalShares * tradableRatio)
+
+  const turnoverRate = tradableShares > 0 ? (totalVolume / tradableShares) * 100 : 0
+  const amplitude = ref.preClose > 0 ? ((ref.high - ref.low) / ref.preClose) * 100 : 0
+
+  const peStatic = 8 + (hash % 37)
+  const peTTM = peStatic * (0.85 + (hash % 31) / 100)
+  const eps = price / peStatic
+  const pb = 1.2 + (hash % 8) * 0.6
+  const navPerShare = pb > 0 ? price / pb : price
+
+  return {
+    high: ref.high,
+    low: ref.low,
+    open: ref.open,
+    preClose: ref.preClose,
+    volume: totalVolume,
+    amount: totalAmount,
+    turnoverRate: toFloat(turnoverRate),
+    amplitude: toFloat(amplitude),
+    peStatic: toFloat(peStatic),
+    peTTM: toFloat(peTTM),
+    eps: toFloat(eps, 3),
+    navPerShare: toFloat(navPerShare),
+    tradableShares,
+    totalShares,
+    totalMarketCap: price * totalShares,
+    tradableMarketCap: price * tradableShares,
+    pb: toFloat(pb),
+  }
+})
+
 const chartMode = ref<ChartMode>('realtime')
 
 const klineData = computed(() => {
@@ -72,6 +259,14 @@ const stockOrders = computed<Order[]>(() =>
   orderStore.orders.filter((o) => o.stockCode === stockCode.value)
 )
 
+const buyOrders = computed(() =>
+  stockOrders.value.filter((o) => o.type === 'buy')
+)
+
+const sellOrders = computed(() =>
+  stockOrders.value.filter((o) => o.type === 'sell')
+)
+
 const pendingBuyCount = computed(() =>
   stockOrders.value.filter((o) => o.type === 'buy' && (o.status === 'pending' || o.status === 'partial'))
     .reduce((s, o) => s + o.quantity - o.filledQuantity, 0)
@@ -82,25 +277,13 @@ const pendingSellCount = computed(() =>
     .reduce((s, o) => s + o.quantity - o.filledQuantity, 0)
 )
 
-function stockNameByCode(code: string): string {
-  return stockRefs.value[code]?.name ?? code
-}
+const stockPosition = computed(() =>
+  positionStore.positions.find((p) => p.stockCode === stockCode.value) ?? null
+)
 
-function formatOrderTime(ts: number): string {
-  const d = new Date(ts)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-}
-
-function orderStatusLabel(status: string): string {
-  const map: Record<string, string> = {
-    pending: '待成交',
-    partial: '部分成交',
-    filled: '已成交',
-    cancelled: '已撤',
-  }
-  return map[status] ?? status
-}
+const availableBalance = computed(() =>
+  authStore.balance
+)
 
 const orderPrice = ref(0)
 const orderQuantity = ref(100)
@@ -298,7 +481,179 @@ async function handleSell() {
         </div>
       </div>
 
+      <div class="depth-panel">
+          <div v-if="stockInfo" class="depth-card card">
+            <div class="card-header">
+              <h3>五档盘口</h3>
+            </div>
+            <div class="depth-table-wrap">
+              <table class="depth-table">
+                <thead>
+                  <tr>
+                    <th class="depth-th-col">档位</th>
+                    <th class="depth-th-price">价格</th>
+                    <th class="depth-th-vol">数量</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(level, idx) in depthLevels.asks.slice().reverse()" :key="'ask-'+idx" class="depth-row depth-sell">
+                    <td class="depth-col">卖{{ 5 - idx }}</td>
+                    <td class="depth-price color-down mono">{{ level.price.toFixed(getDepthPrecision(stockInfo?.price ?? 0)) }}</td>
+                    <td class="depth-vol mono">{{ level.volume }}</td>
+                  </tr>
+                  <tr class="depth-row depth-mid">
+                    <td class="depth-col" colspan="3">
+                      <span class="depth-mid-price mono">{{ (stockInfo?.price ?? 0).toFixed(getDepthPrecision(stockInfo?.price ?? 0)) }}</span>
+                      <span :class="(stockInfo?.change ?? 0) >= 0 ? 'color-up' : 'color-down'" class="depth-mid-change mono">
+                        {{ (stockInfo?.change ?? 0) >= 0 ? '▲' : '▼' }} {{ (stockInfo?.changePercent ?? 0).toFixed(2) }}%
+                      </span>
+                    </td>
+                  </tr>
+                  <tr v-for="(level, idx) in depthLevels.bids" :key="'bid-'+idx" class="depth-row depth-buy">
+                    <td class="depth-col">买{{ idx + 1 }}</td>
+                    <td class="depth-price color-up mono">{{ level.price.toFixed(getDepthPrecision(stockInfo?.price ?? 0)) }}</td>
+                    <td class="depth-vol mono">{{ level.volume }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="trade-detail-card card">
+            <div class="card-header">
+              <h3>交易明细</h3>
+              <span class="trade-count">共{{ simulatedTrades.length }}笔</span>
+            </div>
+            <div v-if="simulatedTrades.length === 0" class="empty-text-small">暂无成交记录</div>
+            <div v-else class="trade-list-wrap">
+              <div class="trade-list-header">
+                <span class="trade-h-time">时间</span>
+                <span class="trade-h-price">价格</span>
+                <span class="trade-h-vol">数量</span>
+                <span class="trade-h-type">方向</span>
+              </div>
+              <div
+                v-for="t in simulatedTrades"
+                :key="t.id"
+                class="trade-row"
+              >
+                <span class="trade-time mono text-muted">{{ t.time }}</span>
+                <span :class="['trade-price', 'mono', t.type === 'buy' ? 'color-up' : 'color-down']">
+                  {{ t.price.toFixed(getDepthPrecision(stockInfo?.price ?? 0)) }}
+                </span>
+                <span class="trade-vol mono">{{ t.volume }}</span>
+                <span :class="['trade-type', t.type === 'buy' ? 'color-up' : 'color-down']">
+                  {{ t.type === 'buy' ? '买入' : '卖出' }}
+                </span>
+              </div>
+            </div>
+          </div>
+      </div>
+
       <div class="side-section">
+        <div v-if="stockDetail" class="detail-info-card card">
+          <div class="card-header">
+            <h3>盘口信息</h3>
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">最高</span>
+              <span class="detail-val color-up">{{ stockDetail.high.toFixed(2) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">最低</span>
+              <span class="detail-val color-down">{{ stockDetail.low.toFixed(2) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">今开</span>
+              <span class="detail-val">{{ stockDetail.open.toFixed(2) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">昨收</span>
+              <span class="detail-val">{{ stockDetail.preClose.toFixed(2) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">成交量</span>
+              <span class="detail-val">{{ formatNum(stockDetail.volume, 0) }}股</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">成交额</span>
+              <span class="detail-val">{{ formatNum(stockDetail.amount, 1) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">换手率</span>
+              <span class="detail-val">{{ stockDetail.turnoverRate.toFixed(2) }}%</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">振幅</span>
+              <span class="detail-val">{{ stockDetail.amplitude.toFixed(2) }}%</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">市盈(静)</span>
+              <span class="detail-val">{{ stockDetail.peStatic.toFixed(2) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">市盈(TTM)</span>
+              <span class="detail-val">{{ stockDetail.peTTM.toFixed(2) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">每股收益</span>
+              <span class="detail-val">{{ stockDetail.eps.toFixed(3) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">每股净资产</span>
+              <span class="detail-val">{{ stockDetail.navPerShare.toFixed(2) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">流通股本</span>
+              <span class="detail-val">{{ formatNum(stockDetail.tradableShares, 1) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">总市值</span>
+              <span class="detail-val">{{ formatNum(stockDetail.totalMarketCap, 1) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">流通市值</span>
+              <span class="detail-val">{{ formatNum(stockDetail.tradableMarketCap, 1) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">市净率</span>
+              <span class="detail-val">{{ stockDetail.pb.toFixed(2) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="position-card card">
+          <div class="card-header">
+            <h3>账户持仓</h3>
+          </div>
+          <div class="pos-info">
+            <div class="pos-row">
+              <span class="pos-label">可用余额</span>
+              <span class="pos-val mono color-up">¥{{ availableBalance.toLocaleString() }}</span>
+            </div>
+            <div class="pos-row" v-if="stockPosition">
+              <span class="pos-label">持有 {{ stockInfo?.name ?? stockCode }}</span>
+              <span class="pos-val mono">{{ stockPosition.quantity }}股</span>
+            </div>
+            <div class="pos-row" v-if="stockPosition">
+              <span class="pos-label">持仓成本</span>
+              <span class="pos-val mono">¥{{ stockPosition.avgPrice.toFixed(2) }}</span>
+            </div>
+            <div class="pos-row" v-if="stockPosition && stockInfo">
+              <span class="pos-label">持仓市值</span>
+              <span class="pos-val mono">¥{{ (stockPosition.quantity * stockInfo.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
+            </div>
+            <div class="pos-row" v-if="stockPosition && stockInfo">
+              <span class="pos-label">浮动盈亏</span>
+              <span :class="['pos-val', 'mono', (stockInfo.price - stockPosition.avgPrice) >= 0 ? 'color-up' : 'color-down']">
+                {{ (stockInfo.price - stockPosition.avgPrice >= 0 ? '+' : '') }}{{ ((stockInfo.price - stockPosition.avgPrice) * stockPosition.quantity).toFixed(2) }}
+              </span>
+            </div>
+            <div v-if="!stockPosition" class="empty-text-small">暂未持有该股票</div>
+          </div>
+        </div>
+
         <div class="trade-card card">
           <div class="card-header">
             <h3>快速交易</h3>
@@ -323,21 +678,38 @@ async function handleSell() {
             <h3>挂单明细</h3>
           </div>
           <div v-if="stockOrders.length === 0" class="empty-text">该股票暂无挂单</div>
-          <div v-else class="orders-list">
-            <div
-              v-for="o in stockOrders"
-              :key="o.id"
-              class="order-row"
-            >
-              <span :class="o.type === 'buy' ? 'color-up' : 'color-down'">
-                {{ o.type === 'buy' ? '买' : '卖' }}
-              </span>
-              <span class="mono">{{ o.price.toFixed(2) }}</span>
-              <span class="mono">{{ o.quantity }}股</span>
-              <span class="mono text-muted">已成交{{ o.filledQuantity }}</span>
-              <span :class="o.status === 'filled' ? 'color-up' : o.status === 'cancelled' ? 'color-flat' : 'color-down'">
-                {{ o.status === 'pending' ? '待成交' : o.status === 'partial' ? '部分' : o.status === 'filled' ? '已成交' : '已撤' }}
-              </span>
+          <div v-else class="orders-split">
+            <div class="orders-col">
+              <div class="orders-col-header color-up">买入挂单</div>
+              <div v-if="buyOrders.length === 0" class="empty-text-small">暂无</div>
+              <div
+                v-for="o in buyOrders"
+                :key="o.id"
+                class="order-row"
+              >
+                <span class="mono">{{ o.price.toFixed(2) }}</span>
+                <span class="mono">{{ o.quantity }}股</span>
+                <span class="mono text-muted">成交{{ o.filledQuantity }}</span>
+                <span :class="o.status === 'filled' ? 'color-up' : o.status === 'cancelled' ? 'color-flat' : 'color-down'">
+                  {{ o.status === 'pending' ? '待成交' : o.status === 'partial' ? '部分' : o.status === 'filled' ? '已成交' : '已撤' }}
+                </span>
+              </div>
+            </div>
+            <div class="orders-col">
+              <div class="orders-col-header color-down">卖出挂单</div>
+              <div v-if="sellOrders.length === 0" class="empty-text-small">暂无</div>
+              <div
+                v-for="o in sellOrders"
+                :key="o.id"
+                class="order-row"
+              >
+                <span class="mono">{{ o.price.toFixed(2) }}</span>
+                <span class="mono">{{ o.quantity }}股</span>
+                <span class="mono text-muted">成交{{ o.filledQuantity }}</span>
+                <span :class="o.status === 'filled' ? 'color-up' : o.status === 'cancelled' ? 'color-flat' : 'color-down'">
+                  {{ o.status === 'pending' ? '待成交' : o.status === 'partial' ? '部分' : o.status === 'filled' ? '已成交' : '已撤' }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -436,13 +808,11 @@ async function handleSell() {
 }
 
 .buy-tag {
-  background: var(--color-up-bg);
   color: var(--color-up);
   border: 1px solid var(--color-up-bg);
 }
 
 .sell-tag {
-  background: var(--color-down-bg);
   color: var(--color-down);
   border: 1px solid var(--color-down-bg);
 }
@@ -472,8 +842,28 @@ async function handleSell() {
   min-height: 0;
 }
 
-.side-section {
+.depth-panel {
+  flex: none;
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 8px;
+}
+
+.depth-card {
+  flex-shrink: 0;
+}
+
+.trade-detail-card {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.side-section {
+  flex: 2;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -600,11 +990,12 @@ async function handleSell() {
 
 .order-row {
   display: flex;
-  gap: 12px;
-  padding: 6px 8px;
-  font-size: 11px;
+  gap: 4px;
+  padding: 3px 4px;
+  font-size: 9px;
   border-bottom: 1px solid var(--border-primary);
   align-items: center;
+  justify-content: space-between;
 }
 
 .order-row:last-child {
@@ -624,5 +1015,224 @@ async function handleSell() {
   color: var(--text-muted);
   padding: 20px 0;
   font-size: 12px;
+}
+
+.empty-text-small {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 6px 0;
+  font-size: 10px;
+}
+
+.detail-info-card {
+  flex-shrink: 0;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 10px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.detail-item:last-child,
+.detail-item:nth-last-child(2):nth-child(odd) {
+  border-bottom: none;
+}
+
+.detail-label {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.detail-val {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.position-card {
+  flex-shrink: 0;
+}
+
+.pos-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pos-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 11px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.pos-row:last-child {
+  border-bottom: none;
+}
+
+.pos-label {
+  color: var(--text-secondary);
+}
+
+.pos-val {
+  font-weight: 600;
+}
+
+.depth-table-wrap {
+  overflow: hidden;
+}
+
+.depth-table {
+  width: 100%;
+  font-size: 11px;
+}
+
+.depth-table thead th {
+  padding: 3px 4px;
+  font-size: 9px;
+  text-transform: none;
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--border-accent);
+}
+
+.depth-th-col {
+  text-align: left;
+  width: 25%;
+}
+
+.depth-th-price {
+  text-align: center;
+  width: 37.5%;
+}
+
+.depth-th-vol {
+  text-align: right;
+  width: 37.5%;
+}
+
+.depth-row td {
+  padding: 3px 4px;
+  border-bottom: none;
+}
+
+.depth-col {
+  text-align: left;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.depth-price {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.depth-vol {
+  text-align: right;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.depth-mid td {
+  padding: 6px 4px;
+  text-align: center;
+  background: var(--bg-hover);
+  border-top: 1px solid var(--border-primary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.depth-mid-price {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.depth-mid-change {
+  font-size: 11px;
+  margin-left: 8px;
+  font-weight: 600;
+}
+
+.trade-count {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.trade-list-wrap {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.trade-list-header {
+  display: flex;
+  padding: 3px 4px;
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-accent);
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+  z-index: 1;
+}
+
+.trade-h-time { width: 25%; text-align: left; }
+.trade-h-price { width: 25%; text-align: center; }
+.trade-h-vol { width: 25%; text-align: center; }
+.trade-h-type { width: 25%; text-align: right; }
+
+.trade-row {
+  display: flex;
+  padding: 3px 4px;
+  font-size: 10px;
+  border-bottom: 1px solid var(--border-primary);
+  align-items: center;
+}
+
+.trade-row:last-child {
+  border-bottom: none;
+}
+
+.trade-row:hover {
+  background: var(--bg-hover);
+}
+
+.trade-time { width: 25%; text-align: left; }
+.trade-price { width: 25%; text-align: center; font-weight: 600; }
+.trade-vol { width: 25%; text-align: center; }
+.trade-type { width: 25%; text-align: right; font-weight: 600; }
+
+.orders-split {
+  display: flex;
+  gap: 8px;
+}
+
+.orders-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.orders-col-header {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 0 4px;
+  border-bottom: 1px solid var(--border-accent);
+  margin-bottom: 4px;
+  text-align: center;
 }
 </style>

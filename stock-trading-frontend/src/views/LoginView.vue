@@ -12,10 +12,11 @@ const sessionStore = useSessionStore()
 const isRegister = ref(route.query.add === '1')
 const username = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const errorMsg = ref('')
 const submitting = ref(false)
 
-const title = computed(() => isRegister.value ? '添加账号' : '交易系统登录')
+const title = computed(() => isRegister.value ? '注册账号' : '交易系统登录')
 
 async function submit() {
   errorMsg.value = ''
@@ -23,6 +24,11 @@ async function submit() {
   const p = password.value.trim()
   if (!u || !p) {
     errorMsg.value = '请输入用户名和密码'
+    return
+  }
+
+  if (isRegister.value && p !== confirmPassword.value.trim()) {
+    errorMsg.value = '两次输入的密码不一致'
     return
   }
 
@@ -68,17 +74,27 @@ async function submit() {
           @keyup.enter="submit"
         />
 
+        <label v-if="isRegister" class="field-label">确认密码</label>
+        <input
+          v-if="isRegister"
+          v-model="confirmPassword"
+          type="password"
+          placeholder="再次输入密码"
+          class="login-input"
+          @keyup.enter="submit"
+        />
+
         <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
 
         <button class="btn btn-primary login-btn" :disabled="submitting" @click="submit">
           <span v-if="submitting">处理中...</span>
-          <span v-else>{{ isRegister ? '添加' : '登录' }}</span>
+          <span v-else>{{ isRegister ? '注册' : '登录' }}</span>
         </button>
 
         <div class="toggle-mode">
           <span v-if="!isRegister">
             或
-            <a href="#" @click.prevent="isRegister = true">添加新账号</a>
+            <a href="#" @click.prevent="isRegister = true">注册新账号</a>
           </span>
           <span v-else>
             已有账号？

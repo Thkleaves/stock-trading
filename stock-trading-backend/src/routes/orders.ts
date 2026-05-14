@@ -12,7 +12,7 @@ import { positionsStore } from '../store/positions.js'
 import { tradesStore } from '../store/trades.js'
 import { usersStore } from '../store/users.js'
 import { matchOrder, validateBuy, validateSell } from '../engine/matcher.js'
-import { pushEvent } from '../services/eventPusher.js'
+import { pushEvent } from '../services/sse.js'
 import { eventSeqStore } from '../store/eventSeq.js'
 
 const router = Router()

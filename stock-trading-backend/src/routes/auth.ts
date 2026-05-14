@@ -1,10 +1,11 @@
 import { Router, type Request, type Response } from 'express'
-import type { RegisterRequest, LoginRequest, UserInfo } from '../types/index.js'
-import { STOCKS } from '../types/index.js'
+import type { RegisterRequest, LoginRequest, UserInfo, PositionResponse, TradeResponse } from '../types/index.js'
+import { STOCKS, INITIAL_STOCK_SHARES, INITIAL_STOCK_COUNT, getStockByCode } from '../types/index.js'
 import { usersStore } from '../store/users.js'
 import { positionsStore } from '../store/positions.js'
-
-const INITIAL_SHARES = 100
+import { ordersStore } from '../store/orders.js'
+import { tradesStore } from '../store/trades.js'
+import { pnlCurveStore } from '../store/pnlCurve.js'
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -14,6 +15,15 @@ const COOKIE_OPTIONS = {
 }
 
 const router = Router()
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
 
 router.post(
   '/register',
@@ -32,19 +42,26 @@ router.post(
 
     const user = usersStore.create(username, password)
 
-    for (const stock of STOCKS) {
-      positionsStore.addPosition(user.id, stock.code, INITIAL_SHARES, stock.initialPrice)
+    const picks = shuffle(STOCKS).slice(0, INITIAL_STOCK_COUNT)
+    const stockCodes: string[] = []
+
+    for (const stock of picks) {
+      stockCodes.push(stock.code)
+      positionsStore.addPosition(user.id, stock.code, INITIAL_STOCK_SHARES, stock.initialPrice)
     }
+
+    pnlCurveStore.generateForUser(user.id, stockCodes)
 
     res.cookie('userId', user.id, COOKIE_OPTIONS)
 
-    const userInfo: UserInfo = {
-      userId: user.id,
-      username: user.username,
-      balance: user.balance,
-      frozenBalance: user.frozenBalance,
-    }
-    res.json(userInfo)
+    const positions = positionsStore.getByUser(user.id).map(toPosResp)
+    res.json({
+      user: { userId: user.id, username: user.username, balance: user.balance, frozenBalance: user.frozenBalance },
+      positions,
+      orders: [],
+      trades: [],
+      pnlCurve: pnlCurveStore.getByUserId(user.id),
+    })
   }
 )
 
@@ -66,15 +83,41 @@ router.post(
 
     res.cookie('userId', user.id, COOKIE_OPTIONS)
 
-    const userInfo: UserInfo = {
-      userId: user.id,
-      username: user.username,
-      balance: user.balance,
-      frozenBalance: user.frozenBalance,
-    }
-    res.json(userInfo)
+    const positions = positionsStore.getByUser(user.id).map(toPosResp)
+    const trades = tradesStore.getByUser(user.id).map((t) => toTradeResp(t, user.id))
+
+    res.json({
+      user: { userId: user.id, username: user.username, balance: user.balance, frozenBalance: user.frozenBalance },
+      positions,
+      orders: ordersStore.getByUser(user.id),
+      trades,
+      pnlCurve: pnlCurveStore.getByUserId(user.id),
+    })
   }
 )
+
+function toTradeResp(trade: { id: string; buyOrderId: string; sellOrderId: string; stockCode: string; price: number; quantity: number; time: number }, userId: string): TradeResponse {
+  const buyOrder = ordersStore.getById(trade.buyOrderId)
+  const sellOrder = ordersStore.getById(trade.sellOrderId)
+  const isBuyer = buyOrder?.userId === userId
+  const isSeller = sellOrder?.userId === userId
+
+  let type: 'buy' | 'sell'
+  if (isBuyer && isSeller) {
+    const buyTime = buyOrder?.createdAt ?? 0
+    const sellTime = sellOrder?.createdAt ?? 0
+    type = buyTime >= sellTime ? 'buy' : 'sell'
+  } else {
+    type = isBuyer ? 'buy' : 'sell'
+  }
+
+  return { id: trade.id, stockCode: trade.stockCode, price: trade.price, quantity: trade.quantity, type, time: trade.time }
+}
+
+function toPosResp(r: { userId: string; stockCode: string; quantity: number; avgPrice: number }): PositionResponse {
+  const stock = getStockByCode(r.stockCode)
+  return { stockCode: r.stockCode, stockName: stock?.name ?? r.stockCode, quantity: r.quantity, avgPrice: r.avgPrice, currentPrice: stock?.initialPrice ?? 0 }
+}
 
 router.post('/logout', (_req: Request, res: Response) => {
   res.clearCookie('userId', { path: '/' })
@@ -102,6 +145,20 @@ router.get(
       frozenBalance: user.frozenBalance,
     }
     res.json(userInfo)
+  }
+)
+
+router.get(
+  '/pnl-curve',
+  (req: Request, res: Response) => {
+    const userId = req.cookies?.userId as string | undefined
+      ?? req.headers['x-user-id'] as string | undefined
+    if (!userId) {
+      res.status(401).json({ message: '未登录' })
+      return
+    }
+    const data = pnlCurveStore.getByUserId(userId)
+    res.json(data)
   }
 )
 

@@ -1,11 +1,12 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { User, Order, PositionRecord, TradeRecord } from '../types/index.js'
+import type { User, Order, PositionRecord, TradeRecord, PnlCurveEntry } from '../types/index.js'
 import { usersStore } from '../store/users.js'
 import { ordersStore } from '../store/orders.js'
 import { positionsStore } from '../store/positions.js'
 import { tradesStore } from '../store/trades.js'
+import { pnlCurveStore } from '../store/pnlCurve.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -16,6 +17,8 @@ interface SnapshotData {
   orders: Order[]
   positions: PositionRecord[]
   trades: TradeRecord[]
+  pnlCurves: Record<string, PnlCurveEntry[]>
+  pnlInitialAssets: Record<string, number>
 }
 
 export function loadSnapshot(): boolean {
@@ -27,6 +30,7 @@ export function loadSnapshot(): boolean {
     ordersStore.loadFrom(data.orders ?? [])
     positionsStore.loadFrom(data.positions ?? [])
     tradesStore.loadFrom(data.trades ?? [])
+    pnlCurveStore.loadFrom(data.pnlCurves ?? {}, data.pnlInitialAssets ?? {})
     console.log(`[snapshot] 已加载快照: ${data.users?.length ?? 0} 用户, ${data.orders?.length ?? 0} 委托, ${data.positions?.length ?? 0} 持仓, ${data.trades?.length ?? 0} 成交`)
     return true
   } catch (e) {
@@ -38,11 +42,14 @@ export function loadSnapshot(): boolean {
 export function saveSnapshot(): void {
   try {
     mkdirSync(dirname(SNAPSHOT_PATH), { recursive: true })
+    const pnlData = pnlCurveStore.getAll()
     const data: SnapshotData = {
       users: usersStore.getAll(),
       orders: ordersStore.getAll(),
       positions: positionsStore.getAllFlat(),
       trades: tradesStore.getAll(),
+      pnlCurves: pnlData.curves,
+      pnlInitialAssets: pnlData.initialAssets,
     }
     writeFileSync(SNAPSHOT_PATH, JSON.stringify(data, null, 2), 'utf-8')
   } catch (e) {
