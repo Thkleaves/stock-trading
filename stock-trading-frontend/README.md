@@ -1,135 +1,127 @@
 # stock-trading-frontend · 股票交易系统前端
 
-Vue 3 + TypeScript + Vite 构建的股票模拟交易系统前端。
+Vue 3 + TypeScript + Vite 构建的股票模拟交易系统前端，采用极简工业风 B 端 UI 设计。
 
 ## 技术栈
 
-- **Vue 3** (`<script setup>` SFC)
-- **TypeScript**
-- **Vite** (开发服务器 + 构建)
-- **Pinia** (状态管理)
-- **Vue Router** (路由)
-- **Axios** (HTTP 请求)
+| 类别 | 技术 | 说明 |
+|---|---|---|
+| 框架 | Vue 3 (`<script setup>`) | Composition API |
+| 语言 | TypeScript | 严格类型 |
+| 构建 | Vite / Rolldown | 极速 HMR + 生产构建 |
+| 状态 | Pinia | 响应式 store |
+| 路由 | Vue Router 4 | 动态路由 |
+| HTTP | Axios | REST API 代理 |
+| 实时 | WebSocket | 断线重连 |
+| K 线 | HQChart + jQuery | 专业金融图表 |
 
 ## 项目结构
 
 ```
 src/
 ├── main.ts                    # 入口：挂载 App + Pinia + Router
-├── App.vue                    # 根组件（RouterView）
+├── App.vue                    # 根组件：AppLayout + RouterView
 ├── router/
-│   └── index.ts               # 路由配置 + 登录守卫
-├── stores/
-│   ├── auth.ts                # 用户登录状态 store
-│   ├── market.ts              # 行情数据 store（WebSocket 驱动）
-│   ├── order.ts               # 委托列表 store
-│   ├── position.ts            # 持仓列表 store
-│   └── trade.ts               # 成交记录 store
-├── services/
-│   ├── api.ts                 # Axios 封装（代理到后端 :3000）
-│   └── websocket.ts           # WebSocket 客户端（含断线重连，连接 :3001）
+│   └── index.ts               # 路由配置（/ → 行情 | /stock/:code → 个股 | /profile → 资产）
+├── stores/                    # Pinia 状态管理
+│   ├── auth.ts                # 用户认证（含 guest 游客模式）
+│   ├── market.ts              # 行情数据
+│   ├── order.ts               # 委托订单
+│   ├── position.ts            # 持仓管理
+│   └── trade.ts               # 成交记录
+├── services/                  # 网络层
+│   ├── api.ts                 # Axios REST 封装（/api → localhost:3000）
+│   └── websocket.ts           # WebSocket 客户端（断线重连）
 ├── types/
-│   └── index.ts               # 共享类型定义
-├── views/
-│   ├── LoginView.vue          # 登录页
-│   ├── RegisterView.vue       # 注册页
-│   └── DashboardView.vue      # 主面板（双栏布局容器）
-├── components/
-│   ├── MarketBoard.vue        # 行情看板（实时价格卡片）
-│   ├── TradePanel.vue         # 交易面板（买入/卖出表单）
-│   ├── OrderList.vue          # 委托列表（未成交/已成交 Tab）
-│   ├── PositionList.vue       # 持仓列表（含盈亏计算）
-│   └── TradeRecord.vue        # 成交记录列表
-└── assets/
-    └── main.css               # 全局样式
+│   └── index.ts               # 共享 TypeScript 类型
+├── data/
+│   └── mock.ts                # Mock 数据（20 支 A 股 + K 线 + 用户资产）
+├── views/                     # 页面组件
+│   ├── HomeView.vue           # 首页：上证 K 线 + 股票涨跌列表
+│   ├── StockDetailView.vue    # 个股详情：K 线 + 挂单信息 + 快速交易
+│   └── ProfileView.vue        # 个人中心：资产/盈亏曲线/持仓/交易记录
+├── components/                # 可复用组件
+│   ├── AppLayout.vue          # 顶部导航布局（暗色工业风）
+│   └── KLineChart.vue         # HQChart K线图封装
+├── assets/
+│   └── main.css               # 全局暗色主题（CSS 变量 + 红绿色阶）
+└── hqchart.d.ts               # HQChart / jQuery 全局类型声明
 ```
 
 ## 路由设计
 
-| 路径 | 组件 | 说明 | 鉴权 |
-|---|---|---|---|
-| `/login` | LoginView | 登录页 | 否 |
-| `/register` | RegisterView | 注册页 | 否 |
-| `/dashboard` | DashboardView | 主面板（含所有子组件） | 是 |
+| 路径 | 页面 | 说明 |
+|---|---|---|
+| `/` | HomeView | 上证指数 K 线 + 20 支持股实时涨跌 |
+| `/stock/:code` | StockDetailView | 个股 K 线 + 挂单明细 + 快速买卖 |
+| `/profile` | ProfileView | 总资产 / 盈亏曲线 / 持仓 / 交易记录 |
 
-- 路由守卫：未登录跳转 `/login`
-- 登录成功后跳转 `/dashboard`
+## 页面功能说明
+
+### 行情页 `/`
+
+- **左栏（3/5）**：上证指数 HQChart K 线图（含 MA / VOL / MACD 指标）+ 实时价格 / 涨跌幅 / OHL
+- **右栏（2/5）**：20 支 A 股列表，每隔 2 秒随机游走模拟行情波动
+  - 顶部统计：上涨 / 平盘 / 下跌 家数
+  - 双击任意行 → 跳转个股详情
+  - 红绿颜色区分涨跌
+
+### 个股详情 `/stock/:code`
+
+- **顶部栏**：返回按钮 + 股票名称 / 代码 + 实时价格 + OHL 数据 + 挂单标记（买挂 N 手 / 卖挂 N 手）
+- **左栏（3/4）**：HQChart K 线图
+- **右栏（1/4）**：
+  - 快速交易面板（价格 / 数量输入 + 买入 / 卖出按钮）
+  - 挂单明细列表（方向 / 价格 / 数量 / 已成交 / 状态）
+
+### 个人中心 `/profile`
+
+- **顶部 4 卡片**：总资产 / 持仓市值 / 可用余额 / 累计盈亏（含百分比）
+- **左栏（3/5）**：30 天盈亏曲线（Canvas 绘制，贝塞尔平滑 + 渐变填充 + 网格线）
+- **右栏（2/5）**：Tab 切换
+  - **持仓明细**：股票 / 持仓股数 / 均价 / 现价 / 盈亏金额 / 盈亏%
+  - **交易记录**：股票 / 方向 / 价格 / 数量 / 盈亏 / 时间
+
+## 设计风格
+
+- **暗色工业风**（`#0a0e14` 底色）：高对比度、低饱和度、专业交易终端
+- **红绿色阶**：红涨绿跌（`#e5534b` / `#3fb950`）
+- **霓虹蓝强调**：`#388bfd` / `#58a6ff`
+- **等宽数字**：所有价格 / 收益率使用 `SF Mono` / `Consolas`
+- **CSS 变量体系**：统一管理颜色、边框、字号
 
 ## 数据流
 
 ```
 App.vue
-└── <RouterView>
-    ├── LoginView        → auth store (login action)
-    ├── RegisterView     → auth store (register action)
-    └── DashboardView
-        ├── MarketBoard      → market store (readonly)
-        ├── TradePanel       → order store (create) + market store
-        ├── OrderList        → order store (readonly)
-        ├── PositionList     → position store (readonly)
-        └── TradeRecord      → trade store (readonly)
+└── AppLayout (导航栏)
+    └── <RouterView>
+        ├── HomeView           → mock.ts（K 线 + 行情）
+        ├── StockDetailView    → mock.ts（K 线 + 挂单）
+        └── ProfileView        → mock.ts（资产 + 持仓 + 交易）
 ```
 
-1. 页面挂载 → WebSocket 建立连接
-2. WebSocket 收到行情 → 写入 `market store` → MarketBoard 响应式更新
-3. WebSocket 收到用户事件 → 写入 `order / position / trade store` → 各列表组件响应式更新
-4. 用户下单 → `api.ts` POST 到后端 → 后端撮合 → 实时服务推送 WebSocket → store 更新
+**Mock 模式**（当前）：所有数据由 `src/data/mock.ts` 提供，无需后端即可全功能预览。20 支持股模拟随机行情波动。
 
-## 依赖服务
+**完整模式**（对接后端后）：WebSocket 实时驱动 market store → 各组件响应式更新。用户下单 → REST API → 撮合 → WebSocket 推送。
+
+## 依赖服务（完整模式）
 
 | 服务 | 端口 | 说明 |
 |---|---|---|
-| stock-trading-backend | :3000 | REST API（代理 /api → localhost:3000） |
-| stock-trading-realtime | :3001 | WebSocket 实时行情推送 |
+| stock-trading-backend | :3000 | REST API |
+| stock-trading-realtime | :3001 | WebSocket 行情推送 |
 
 ## 快速开始
 
 ```bash
-# 安装依赖
-npm install
-
-# 启动开发服务器（端口 5173）
-npm run dev
-
-# 类型检查 + 构建
-npm run build
-
-# 预览构建产物
-npm run preview
+npm install        # 安装依赖
+npm run dev        # 启动开发服务器 (localhost:5173)
+npm run build      # 类型检查 + 生产构建
+npm run preview    # 预览构建产物
 ```
 
-## 认证机制
-
-系统使用 **HttpOnly Cookie** 进行用户认证，登录成功后后端自动设置 `userId` Cookie（有效期 24 小时），
-所有后续请求浏览器自动携带，无需前端显式传递 userId 参数。
-
-## HTTP API 清单
-
-| 方法 | 路径 | 说明 | 认证 |
-|---|---|---|---|
-| POST | `/api/auth/register` | 注册（成功后设置 Cookie） | 否 |
-| POST | `/api/auth/login` | 登录（成功后设置 Cookie） | 否 |
-| POST | `/api/auth/logout` | 登出（清除 Cookie） | 否 |
-| GET | `/api/auth/user` | 查询用户信息（余额等，从 Cookie 读取用户身份） | 是 |
-| POST | `/api/orders` | 下单（从 Cookie 读取用户身份） | 是 |
-| GET | `/api/orders` | 查询委托 | 是 |
-| GET | `/api/positions` | 查询持仓 | 是 |
-| GET | `/api/trades` | 查询成交记录 | 是 |
-
-## WebSocket 消息协议
-
-**服务端 → 客户端：**
-- `type: "quotes"` → 全部股票行情（首次订阅）→ 批量更新 market store
-- `type: "quote"` → 单支行情推送 → 更新 market store
-- `type: "order"` → 委托更新 → 更新 order store
-- `type: "position"` → 持仓更新 → 更新 position store
-- `type: "trade"` → 成交推送 → 更新 trade store
-- `type: "sync"` → 全量状态同步（重连后）
-- `type: "error"` → 错误消息
-
-**客户端 → 服务端：**
-- `type: "subscribe"` → 订阅用户频道
-- `type: "resync"` → 重连后请求同步
+**无需后端即可运行**：`npm run dev` 后直接访问 `localhost:5173`，所有页面均使用内置 Mock 数据渲染。
 
 ## Docker
 

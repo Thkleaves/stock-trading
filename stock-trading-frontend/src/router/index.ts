@@ -1,44 +1,27 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
-import { useSessionStore } from '@/stores/sessions'
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/dashboard',
+    name: 'home',
+    component: () => import('@/views/HomeView.vue'),
   },
   {
-    path: '/login',
-    name: 'login',
-    component: () => import('@/views/LoginView.vue'),
+    path: '/stock/:code',
+    name: 'stock-detail',
+    component: () => import('@/views/StockDetailView.vue'),
   },
   {
-    path: '/register',
-    name: 'register',
-    component: () => import('@/views/RegisterView.vue'),
-  },
-  {
-    path: '/dashboard',
-    name: 'dashboard',
-    component: () => import('@/views/DashboardView.vue'),
+    path: '/profile',
+    name: 'profile',
+    component: () => import('@/views/ProfileView.vue'),
   },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
-})
-
-router.beforeEach((to) => {
-  const sessionStore = useSessionStore()
-  const isLoggedIn = !!sessionStore.activeUserId.value
-
-  if (to.path === '/dashboard' && !isLoggedIn) {
-    return '/login'
-  }
-  if ((to.path === '/login' || to.path === '/register') && isLoggedIn && !to.query.add) {
-    return '/dashboard'
-  }
 })
 
 export default router
