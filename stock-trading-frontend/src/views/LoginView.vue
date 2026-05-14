@@ -1,15 +1,25 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useSessionStore } from '@/stores/sessions'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
+const sessionStore = useSessionStore()
 
 const username = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+
+onMounted(() => {
+  if (route.query.add !== undefined) {
+    authStore.clearCurrentUser()
+    sessionStore.clearActive()
+  }
+})
 
 async function handleLogin() {
   error.value = ''
@@ -33,6 +43,7 @@ async function handleLogin() {
   <div class="auth-container">
     <div class="auth-card">
       <h2>股票交易系统 · 登录</h2>
+
       <form @submit.prevent="handleLogin">
         <div class="form-group">
           <label>用户名</label>

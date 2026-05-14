@@ -58,10 +58,12 @@ stock-trading/
 | 登录 / 注册 | frontend + backend | 必做 | 内存存储，无数据库 |
 | 行情看板（≥3 支股票） | frontend + realtime | 必做 | 每秒随机波动 |
 | 交易面板（买入/卖出） | frontend + backend | 必做 | 限价单委托 |
-| 委托列表（未成交/已成交） | frontend + backend | 必做 | 实时更新 |
+| 委托列表（未成交/已成交） | frontend + backend | 必做 | 实时更新，支持撤单 |
 | 持仓列表 | frontend + backend | 必做 | 实时更新 |
 | 成交记录 | frontend + backend | 必做 | 最近成交展示 |
-| 撮合引擎 | backend | 必做 | 价格优先、时间优先 |
+| 资金冻结 | backend + frontend | 必做 | 买入下单时冻结资金，撮合成交后解冻扣减 |
+| 撤单 | frontend + backend | 必做 | 撤单后退还未成交部分资金，标记已撤单 |
+| 撮合引擎 | backend | 必做 | 价格优先、时间优先，防止自成交 |
 | WebSocket 实时推送 | realtime + frontend | 必做 | 行情 + 用户事件 |
 | WebSocket 断线重连 | frontend + realtime | 加分 | 重连后状态同步 |
 | 撮合引擎单元测试 | backend | 加分 | Vitest，覆盖核心 case |
@@ -80,7 +82,7 @@ stock-trading/
 
 **下午：后端撮合引擎 + REST API**
 - [ ] 实现内存用户管理（注册/登录，初始资金 100 万）
-- [ ] 实现内存撮合引擎（价格优先、时间优先）
+- [ ] 实现内存撮合引擎（价格优先、时间优先，防止自成交）
 - [ ] 实现 REST API：登录、注册、下单、撤单（可选）、查询委托/持仓/成交
 - [ ] 后端通过 HTTP POST 向实时服务推送事件
 - [ ] Postman / curl 自测所有 API
@@ -156,6 +158,12 @@ stock-trading/
 
 3. **前端状态管理用 Pinia + WebSocket 驱动**：行情和用户事件全部通过 WebSocket 推送驱动 Pinia store 更新，组件仅消费 store 状态。避免轮询，保证 UI 实时性。REST API 仅用于写操作（下单等）。
 
+4. **事件序号（eventSeq）+ 轮询兜底保障数据准确性**：后端为每个用户维护单调递增的事件序号，每次撮合产生事件时自增并随消息下发。前端收到事件后校验序号连续性，若序号跳跃（丢消息）则自动触发 REST 全量同步。WebSocket 断线时自动切入 5s 间隔轮询作为兜底，重连后停轮询。此机制确保"数据一致性由 REST 权威源保证，WS 仅作实时信号通道"，避免 WS 丢消息导致前端数据错乱。
+
+5. **简化初始化数据流**：前端页面加载时仅通过 WS 连接后的 `resync` 获取全量状态（orders / positions / trades / quotes / user），不再并行发起 REST 请求。消除双重加载带来的竞态条件和冗余网络开销。
+
+6. **资金冻结与解冻机制**：用户提交买入委托时，资金立即从可用余额扣除并计入冻结余额（`freezeBalance`）。撮合成交时，已成交部分按实际成交价从冻结余额中解冻并扣除；委托撤单时，未成交部分的资金从冻结余额退还回可用余额。卖单不涉及资金冻结，仅校验持仓。此机制确保用户无法用同一笔资金重复下单。
+
 ---
 
 ## 六、Prompt 记录模板
@@ -199,11 +207,15 @@ stock-trading-realtime/
 |------|------|
 | `quote` | 单支股票行情（每秒逐支广播） |
 | `quotes` | 全部股票行情（首次订阅时发送） |
-| `order` | 委托更新（后端撮合后推送） |
-| `position` | 持仓更新（后端撮合后推送） |
-| `trade` | 成交记录（后端撮合后推送） |
+| `order` | 委托更新（后端撮合后推送，含 `eventSeq`） |
+| `position` | 持仓更新（后端撮合后推送，含 `eventSeq`） |
+| `trade` | 成交记录（后端撮合后推送，含 `eventSeq`） |
+| `user` | 用户资金更新（含 `balance` / `frozenBalance`，含 `eventSeq`） |
 | `sync` | 全量状态同步（重连后 resync） |
 | `pong` | 心跳响应 |
+| `error` | 服务端错误通知 |
+
+**事件序号（eventSeq）机制**：`order`、`position`、`trade`、`user` 四类消息体顶层携带 `eventSeq` 字段（用户级单调递增整数）。前端每次收到事件消息先校验序号连续性：连续则正常处理，跳跃则自动触发 REST 增量同步，重复则跳过。
 
 **客户端 → 服务端：**
 | type | 说明 |

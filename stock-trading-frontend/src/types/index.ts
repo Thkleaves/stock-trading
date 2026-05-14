@@ -2,6 +2,7 @@ export interface UserInfo {
   userId: string
   username: string
   balance: number
+  frozenBalance: number
 }
 
 export interface StockQuote {
@@ -58,7 +59,6 @@ export interface LoginRequest {
 }
 
 export interface CreateOrderRequest {
-  userId: string
   stockCode: string
   type: 'buy' | 'sell'
   price: number
@@ -66,8 +66,9 @@ export interface CreateOrderRequest {
 }
 
 export interface WsMessage {
-  type: 'quote' | 'quotes' | 'order' | 'position' | 'trade' | 'sync' | 'error'
+  type: 'quote' | 'quotes' | 'order' | 'position' | 'trade' | 'user' | 'sync' | 'error'
   data: unknown
+  eventSeq?: number
 }
 
 export interface WsQuoteData {
@@ -90,6 +91,13 @@ export interface WsTradeData {
   trade: Trade
 }
 
+export interface WsUserData {
+  userId: string
+  username: string
+  balance: number
+  frozenBalance: number
+}
+
 export interface WsQuotesData {
   [code: string]: StockQuote
 }
@@ -99,6 +107,7 @@ export interface WsSyncData {
   orders: Order[]
   positions: Position[]
   trades: Trade[]
+  user: UserInfo | null
 }
 
 export interface WsErrorData {

@@ -41,12 +41,11 @@ async function submitOrder(type: 'buy' | 'sell') {
     isError.value = true
     return
   }
-  if (!authStore.token) return
+  if (!authStore.userId) return
 
   submitting.value = true
   try {
     const res = await api.post('/api/orders', {
-      userId: authStore.token,
       stockCode: stockCode.value,
       type,
       price: price.value,
@@ -55,13 +54,12 @@ async function submitOrder(type: 'buy' | 'sell') {
 
     orderStore.upsertOrder(res.order)
 
-    const [userInfo, tradesRes] = await Promise.all([
-      api.get(`/api/auth/user?userId=${authStore.token}`) as unknown as UserInfo,
-      api.get(`/api/trades?userId=${authStore.token}`) as unknown as { trades: Trade[] },
-    ])
-    authStore.updateBalance(userInfo.balance)
-    const latest = tradesRes.trades ?? []
-    latest.forEach((t: Trade) => tradeStore.addTrade(t))
+    if (res.trades.length > 0) {
+      res.trades.forEach((t) => tradeStore.addTrade(t))
+    }
+
+    const userInfo = await (api.get('/api/auth/user') as Promise<UserInfo>)
+    authStore.setUserData(userInfo)
 
     message.value = `${type === 'buy' ? '买入' : '卖出'}委托已提交`
     isError.value = false

@@ -6,12 +6,7 @@ import { positionsStore } from '../store/positions.js'
 const router = Router()
 
 router.get('/', (req: Request, res: Response) => {
-  const userId = req.query.userId as string
-  if (!userId) {
-    res.status(400).json({ message: '缺少 userId 参数' })
-    return
-  }
-
+  const userId = req.userId!
   const records = positionsStore.getByUser(userId)
   const positions: PositionResponse[] = records.map((r) => {
     const stock = getStockByCode(r.stockCode)

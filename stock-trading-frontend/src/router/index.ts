@@ -1,4 +1,6 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
+import { useSessionStore } from '@/stores/sessions'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -7,19 +9,18 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/login',
-    name: 'Login',
+    name: 'login',
     component: () => import('@/views/LoginView.vue'),
   },
   {
     path: '/register',
-    name: 'Register',
+    name: 'register',
     component: () => import('@/views/RegisterView.vue'),
   },
   {
     path: '/dashboard',
-    name: 'Dashboard',
+    name: 'dashboard',
     component: () => import('@/views/DashboardView.vue'),
-    meta: { requiresAuth: true },
   },
 ]
 
@@ -28,15 +29,16 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, _from, next) => {
-  if (to.meta.requiresAuth) {
-    const userId = localStorage.getItem('userId')
-    if (!userId) {
-      next('/login')
-      return
-    }
+router.beforeEach((to) => {
+  const sessionStore = useSessionStore()
+  const isLoggedIn = !!sessionStore.activeUserId.value
+
+  if (to.path === '/dashboard' && !isLoggedIn) {
+    return '/login'
   }
-  next()
+  if ((to.path === '/login' || to.path === '/register') && isLoggedIn && !to.query.add) {
+    return '/dashboard'
+  }
 })
 
 export default router

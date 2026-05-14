@@ -7,7 +7,7 @@ import { matchOrder, validateBuy, validateSell } from './matcher.js'
 import type { Order, User } from '../types/index.js'
 
 function createUser(id: string, balance = 1_000_000): User {
-  const user: User = { id, username: `u_${id}`, password: 'pass', balance }
+  const user: User = { id, username: `u_${id}`, password: 'pass', balance, frozenBalance: 0 }
   usersStore._unsafeSet(user)
   return user
 }
@@ -20,7 +20,9 @@ function createOrder(params: {
   quantity: number
 }): Order {
   const order = ordersStore.create(params)
-  if (params.type === 'sell') {
+  if (params.type === 'buy') {
+    usersStore.freezeBalance(params.userId, params.price * params.quantity)
+  } else {
     positionsStore.addPosition(params.userId, params.stockCode, params.quantity, params.price)
   }
   return order
@@ -141,6 +143,33 @@ describe('撮合引擎单元测试', () => {
     const buyAfter = ordersStore.getById(buyOrder.id)!
     expect(buyAfter.status).toBe('partial')
     expect(buyAfter.filledQuantity).toBe(70)
+  })
+
+  it('自成交防护：同一用户的买卖单不应相互撮合', () => {
+    createUser('u1')
+
+    createOrder({ userId: 'u1', stockCode: '000001', type: 'sell', price: 12.0, quantity: 100 })
+
+    const buyOrder = createOrder({ userId: 'u1', stockCode: '000001', type: 'buy', price: 12.5, quantity: 100 })
+    const result = matchOrder(buyOrder)
+
+    expect(result.trades).toHaveLength(0)
+    const buyAfter = ordersStore.getById(buyOrder.id)!
+    expect(buyAfter.status).toBe('pending')
+  })
+
+  it('自成交防护：用户卖单不匹配自己的买单，但仍匹配他人买单', () => {
+    createUser('u1')
+    createUser('u2')
+
+    createOrder({ userId: 'u1', stockCode: '000001', type: 'sell', price: 12.0, quantity: 100 })
+    createOrder({ userId: 'u1', stockCode: '000001', type: 'buy', price: 13.0, quantity: 50 })
+
+    const buyOrder = createOrder({ userId: 'u2', stockCode: '000001', type: 'buy', price: 13.0, quantity: 100 })
+    const result = matchOrder(buyOrder)
+
+    expect(result.trades).toHaveLength(1)
+    expect(result.trades[0].quantity).toBe(100)
   })
 
   it('资金不足校验：买入超过余额，应拒绝', () => {

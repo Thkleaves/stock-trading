@@ -2,15 +2,19 @@ import { useMarketStore } from '@/stores/market'
 import { useOrderStore } from '@/stores/order'
 import { usePositionStore } from '@/stores/position'
 import { useTradeStore } from '@/stores/trade'
-import type { WsMessage, WsQuoteData, WsQuotesData, WsOrderData, WsPositionData, WsTradeData, WsSyncData, WsErrorData } from '@/types'
+import { useAuthStore } from '@/stores/auth'
+import { api } from '@/services/api'
+import type { WsMessage, WsQuoteData, WsQuotesData, WsOrderData, WsPositionData, WsTradeData, WsUserData, WsSyncData, WsErrorData, Trade, Order, Position } from '@/types'
 
 const WS_URL = 'ws://localhost:3001'
 const MAX_RECONNECT_INTERVAL = 30000
 const INITIAL_RECONNECT_INTERVAL = 1000
+const POLLING_INTERVAL = 5000
 
 class MarketWebSocket {
   private ws: WebSocket | null = null
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private pollingTimer: ReturnType<typeof setInterval> | null = null
   private reconnectAttempts = 0
   private userId: string | null = null
   private intentionalClose = false
@@ -25,6 +29,7 @@ class MarketWebSocket {
   disconnect() {
     this.intentionalClose = true
     this.clearReconnectTimer()
+    this.stopPolling()
     if (this.ws) {
       this.ws.close()
       this.ws = null
@@ -39,6 +44,7 @@ class MarketWebSocket {
     this.ws.onopen = () => {
       console.log('[WebSocket] 已连接')
       this.reconnectAttempts = 0
+      this.stopPolling()
       this.subscribe()
       this.resync()
     }
@@ -60,6 +66,7 @@ class MarketWebSocket {
       console.log('[WebSocket] 连接关闭')
       this.ws = null
       if (!this.intentionalClose) {
+        this.startPolling()
         this.scheduleReconnect()
       }
     }
@@ -77,7 +84,24 @@ class MarketWebSocket {
     }
   }
 
+  private isEventType(type: string): boolean {
+    return type === 'trade' || type === 'order' || type === 'position' || type === 'user'
+  }
+
+  private handleEventSeq(msg: WsMessage): 'ok' | 'skip' | 'gap' {
+    const tradeStore = useTradeStore()
+    if (!this.isEventType(msg.type)) return 'ok'
+    return tradeStore.tryApplySeq(msg.eventSeq)
+  }
+
   private dispatch(msg: WsMessage) {
+    const seqResult = this.handleEventSeq(msg)
+    if (seqResult === 'skip') return
+    if (seqResult === 'gap') {
+      console.warn('[WebSocket] 事件序号跳跃，触发增量同步')
+      this.incrementalResync()
+    }
+
     switch (msg.type) {
       case 'quote': {
         const data = msg.data as WsQuoteData
@@ -107,15 +131,24 @@ class MarketWebSocket {
         useTradeStore().addTrade(data.trade)
         break
       }
+      case 'user': {
+        const data = msg.data as WsUserData
+        useAuthStore().setUserData(data)
+        break
+      }
       case 'sync': {
         const data = msg.data as WsSyncData
         const marketStore = useMarketStore()
         Object.values(data.quotes).forEach((quote) => {
           marketStore.updateQuote(quote)
         })
-        useOrderStore().setOrders(data.orders)
-        usePositionStore().setPositions(data.positions)
-        useTradeStore().setTrades(data.trades)
+        useOrderStore().setOrders(data.orders as Order[])
+        usePositionStore().setPositions(data.positions as Position[])
+        useTradeStore().setTrades(data.trades as Trade[])
+        useTradeStore().resetEventSeq()
+        if (data.user) {
+          useAuthStore().setUserData(data.user)
+        }
         break
       }
       case 'error': {
@@ -125,6 +158,57 @@ class MarketWebSocket {
       }
       default:
         console.warn('[WebSocket] 未知消息类型', msg.type)
+    }
+  }
+
+  private async incrementalResync() {
+    if (!this.userId) return
+    try {
+      const res = (await api.get('/api/trades')) as unknown as { trades: Trade[] }
+      const orderRes = (await api.get('/api/orders')) as unknown as { orders: Order[] }
+      const positionRes = (await api.get('/api/positions')) as unknown as { positions: Position[] }
+      const userRes = (await api.get('/api/auth/user')) as unknown as { balance: number; frozenBalance: number }
+
+      useTradeStore().addTrades(res.trades || [])
+      useOrderStore().setOrders(orderRes.orders || [])
+      usePositionStore().setPositions(positionRes.positions || [])
+      useAuthStore().setUserData(userRes)
+    } catch {
+      console.warn('[WebSocket] 增量同步失败，将在下次轮询重试')
+    }
+  }
+
+  private startPolling() {
+    if (this.pollingTimer) return
+    console.log('[WebSocket] 启动轮询兜底')
+    this.pollingTimer = setInterval(() => {
+      this.pollData()
+    }, POLLING_INTERVAL)
+  }
+
+  private stopPolling() {
+    if (this.pollingTimer) {
+      console.log('[WebSocket] 停止轮询兜底')
+      clearInterval(this.pollingTimer)
+      this.pollingTimer = null
+    }
+  }
+
+  private async pollData() {
+    if (!this.userId) return
+    try {
+      const res = (await api.get('/api/trades')) as unknown as { trades: Trade[] }
+      const orderRes = (await api.get('/api/orders')) as unknown as { orders: Order[] }
+      const positionRes = (await api.get('/api/positions')) as unknown as { positions: Position[] }
+      const userRes = (await api.get('/api/auth/user')) as unknown as { balance: number; frozenBalance: number }
+
+      useTradeStore().addTrades(res.trades || [])
+      useOrderStore().setOrders(orderRes.orders || [])
+      usePositionStore().setPositions(positionRes.positions || [])
+
+      useAuthStore().setUserData(userRes)
+    } catch {
+      // 轮询失败静默处理，下一轮重试
     }
   }
 

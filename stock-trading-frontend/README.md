@@ -98,17 +98,23 @@ npm run build
 npm run preview
 ```
 
+## 认证机制
+
+系统使用 **HttpOnly Cookie** 进行用户认证，登录成功后后端自动设置 `userId` Cookie（有效期 24 小时），
+所有后续请求浏览器自动携带，无需前端显式传递 userId 参数。
+
 ## HTTP API 清单
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| POST | `/api/auth/register` | 注册 |
-| POST | `/api/auth/login` | 登录 |
-| GET | `/api/auth/user?userId=xxx` | 查询用户信息（余额等） |
-| POST | `/api/orders` | 下单 |
-| GET | `/api/orders?userId=xxx` | 查询委托 |
-| GET | `/api/positions?userId=xxx` | 查询持仓 |
-| GET | `/api/trades?userId=xxx` | 查询成交记录 |
+| 方法 | 路径 | 说明 | 认证 |
+|---|---|---|---|
+| POST | `/api/auth/register` | 注册（成功后设置 Cookie） | 否 |
+| POST | `/api/auth/login` | 登录（成功后设置 Cookie） | 否 |
+| POST | `/api/auth/logout` | 登出（清除 Cookie） | 否 |
+| GET | `/api/auth/user` | 查询用户信息（余额等，从 Cookie 读取用户身份） | 是 |
+| POST | `/api/orders` | 下单（从 Cookie 读取用户身份） | 是 |
+| GET | `/api/orders` | 查询委托 | 是 |
+| GET | `/api/positions` | 查询持仓 | 是 |
+| GET | `/api/trades` | 查询成交记录 | 是 |
 
 ## WebSocket 消息协议
 

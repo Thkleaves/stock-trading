@@ -3,6 +3,7 @@ export interface User {
   username: string
   password: string
   balance: number
+  frozenBalance: number
 }
 
 export interface Stock {
@@ -44,6 +45,7 @@ export interface UserInfo {
   userId: string
   username: string
   balance: number
+  frozenBalance: number
 }
 
 export interface PositionResponse {
@@ -74,7 +76,6 @@ export interface LoginRequest {
 }
 
 export interface CreateOrderRequest {
-  userId: string
   stockCode: string
   type: 'buy' | 'sell'
   price: number
@@ -82,9 +83,10 @@ export interface CreateOrderRequest {
 }
 
 export type RealtimeEvent =
-  | { type: 'order'; userId: string; data: Order }
-  | { type: 'position'; userId: string; data: PositionResponse[] }
-  | { type: 'trade'; userId: string; data: TradeResponse }
+  | { type: 'order'; userId: string; eventSeq: number; data: Order }
+  | { type: 'position'; userId: string; eventSeq: number; data: PositionResponse[] }
+  | { type: 'trade'; userId: string; eventSeq: number; data: TradeResponse }
+  | { type: 'user'; userId: string; eventSeq: number; data: UserInfo }
 
 export const STOCKS: Stock[] = [
   { code: '000001', name: '平安银行', initialPrice: 12.50 },

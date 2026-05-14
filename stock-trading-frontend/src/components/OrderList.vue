@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useOrderStore } from '@/stores/order'
+import { useAuthStore } from '@/stores/auth'
+import { api } from '@/services/api'
 import type { Order } from '@/types'
 
 const orderStore = useOrderStore()
+const authStore = useAuthStore()
 const activeTab = ref<'pending' | 'completed'>('pending')
+const cancellingId = ref<string | null>(null)
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleString('zh-CN')
@@ -22,6 +26,20 @@ function statusLabel(status: Order['status']): string {
 
 function directionLabel(type: 'buy' | 'sell'): string {
   return type === 'buy' ? '买入' : '卖出'
+}
+
+async function cancelOrder(orderId: string) {
+  cancellingId.value = orderId
+  try {
+    const res = (await api.put(`/api/orders/${orderId}/cancel`)) as unknown as { order: Order }
+    orderStore.upsertOrder(res.order)
+    const userRes = (await api.get('/api/auth/user')) as unknown as { balance: number; frozenBalance: number }
+    authStore.setUserData(userRes)
+  } catch (e) {
+    console.error('撤单失败:', e)
+  } finally {
+    cancellingId.value = null
+  }
 }
 </script>
 
@@ -54,6 +72,7 @@ function directionLabel(type: 'buy' | 'sell'): string {
             <th>已成交</th>
             <th>状态</th>
             <th>时间</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -65,6 +84,15 @@ function directionLabel(type: 'buy' | 'sell'): string {
             <td>{{ o.filledQuantity }}</td>
             <td>{{ statusLabel(o.status) }}</td>
             <td>{{ formatTime(o.createdAt) }}</td>
+            <td>
+              <button
+                class="cancel-btn"
+                :disabled="cancellingId === o.id"
+                @click="cancelOrder(o.id)"
+              >
+                {{ cancellingId === o.id ? '撤单中...' : '撤单' }}
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -162,6 +190,28 @@ th {
 
 .sell {
   color: #389e0d;
+}
+
+.cancel-btn {
+  padding: 2px 8px;
+  border: 1px solid #ff4d4f;
+  border-radius: 3px;
+  background: #fff;
+  color: #ff4d4f;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background: #ff4d4f;
+  color: #fff;
+}
+
+.cancel-btn:disabled {
+  border-color: #d9d9d9;
+  color: #d9d9d9;
+  cursor: not-allowed;
 }
 
 .empty-tip {

@@ -34,3 +34,10 @@ export interface Position {
   quantity: number
   avgPrice: number
 }
+
+export interface UserInfo {
+  userId: string
+  username: string
+  balance: number
+  frozenBalance: number
+}

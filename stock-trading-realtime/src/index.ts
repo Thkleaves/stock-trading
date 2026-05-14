@@ -5,7 +5,7 @@ import { WebSocketServer, WebSocket } from 'ws'
 import { createInitialQuotes, tick } from './market/generator.js'
 import { setWss, configureWebSocket, broadcastAll, sendToUser, onSubscribe, onResync } from './ws/server.js'
 import internalRouter from './routes/internal.js'
-import type { StockQuote, Order, Position, Trade } from './types/index.js'
+import type { StockQuote, Order, Position, Trade, UserInfo } from './types/index.js'
 
 const PORT = 3001
 const BACKEND_URL = 'http://localhost:3000'
@@ -41,9 +41,13 @@ onSubscribe((userId: string, ws: WebSocket) => {
   }
 })
 
-async function fetchBackend(path: string): Promise<unknown> {
+async function fetchBackend(path: string, userId?: string): Promise<unknown> {
   try {
-    const res = await fetch(`${BACKEND_URL}${path}`)
+    const headers: Record<string, string> = {}
+    if (userId) {
+      headers['X-User-ID'] = userId
+    }
+    const res = await fetch(`${BACKEND_URL}${path}`, { headers })
     if (!res.ok) return null
     return await res.json()
   } catch {
@@ -53,10 +57,11 @@ async function fetchBackend(path: string): Promise<unknown> {
 
 onResync(async (userId: string, ws: WebSocket) => {
   try {
-    const [ordersRes, positionsRes, tradesRes] = await Promise.all([
-      fetchBackend(`/api/orders?userId=${userId}`),
-      fetchBackend(`/api/positions?userId=${userId}`),
-      fetchBackend(`/api/trades?userId=${userId}`),
+    const [ordersRes, positionsRes, tradesRes, userRes] = await Promise.all([
+      fetchBackend(`/api/orders`, userId),
+      fetchBackend(`/api/positions`, userId),
+      fetchBackend(`/api/trades`, userId),
+      fetchBackend(`/api/auth/user`, userId),
     ])
 
     const syncData = {
@@ -64,6 +69,7 @@ onResync(async (userId: string, ws: WebSocket) => {
       orders: (ordersRes as { orders?: Order[] } | null)?.orders ?? [],
       positions: (positionsRes as { positions?: Position[] } | null)?.positions ?? [],
       trades: (tradesRes as { trades?: Trade[] } | null)?.trades ?? [],
+      user: (userRes as UserInfo | null) ?? null,
     }
 
     const syncMsg = JSON.stringify({

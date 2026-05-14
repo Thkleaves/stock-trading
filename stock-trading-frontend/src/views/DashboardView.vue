@@ -2,68 +2,37 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useMarketStore } from '@/stores/market'
-import { useOrderStore } from '@/stores/order'
-import { usePositionStore } from '@/stores/position'
-import { useTradeStore } from '@/stores/trade'
 import { marketWebSocket } from '@/services/websocket'
 import { api } from '@/services/api'
 import MarketBoard from '@/components/MarketBoard.vue'
+import PositionList from '@/components/PositionList.vue'
 import TradePanel from '@/components/TradePanel.vue'
 import OrderList from '@/components/OrderList.vue'
-import PositionList from '@/components/PositionList.vue'
 import TradeRecord from '@/components/TradeRecord.vue'
+import UserSwitcher from '@/components/UserSwitcher.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const marketStore = useMarketStore()
-const orderStore = useOrderStore()
-const positionStore = usePositionStore()
-const tradeStore = useTradeStore()
 
 onMounted(async () => {
-  if (!authStore.token) {
-    authStore.initGuest()
-    marketStore.loadMockData()
+  if (!authStore.userId) {
+    router.replace('/login')
     return
   }
 
-  marketWebSocket.connect(authStore.token)
+  marketWebSocket.connect(authStore.userId)
 
   try {
-    const [orderRes, positionRes, tradeRes, userRes] = await Promise.all([
-      api.get(`/api/orders?userId=${authStore.token}`),
-      api.get(`/api/positions?userId=${authStore.token}`),
-      api.get(`/api/trades?userId=${authStore.token}`),
-      api.get(`/api/auth/user?userId=${authStore.token}`),
-    ])
-
-    const orderData = orderRes as unknown as { orders: [] }
-    const positionData = positionRes as unknown as { positions: [] }
-    const tradeData = tradeRes as unknown as { trades: [] }
-    const userData = userRes as unknown as { userId: string; username: string; balance: number }
-
-    orderStore.setOrders(orderData.orders || [])
-    positionStore.setPositions(positionData.positions || [])
-    tradeStore.setTrades(tradeData.trades || [])
-
-    if (userData.balance !== undefined) {
-      authStore.updateBalance(userData.balance)
-    }
+    const userRes = (await api.get('/api/auth/user')) as unknown as { balance: number; frozenBalance: number }
+    authStore.setUserData(userRes)
   } catch (e) {
-    console.error('[Dashboard] 初始化数据加载失败', e)
+    console.error('[Dashboard] 用户信息加载失败', e)
   }
 })
 
 onUnmounted(() => {
   marketWebSocket.disconnect()
 })
-
-function handleLogout() {
-  marketWebSocket.disconnect()
-  authStore.logout()
-  router.push('/login')
-}
 
 function formatBalance(balance: number): string {
   return balance.toLocaleString('zh-CN')
@@ -75,12 +44,15 @@ function formatBalance(balance: number): string {
     <header class="dashboard-header">
       <h1>股票交易系统</h1>
       <div class="header-info">
-        <span class="username">{{ authStore.user?.username ?? '游客' }}</span>
         <span class="balance">
-          资金余额：
+          可用：
           <strong>¥{{ formatBalance(authStore.user?.balance ?? 0) }}</strong>
         </span>
-        <button class="btn-logout" @click="handleLogout">退出登录</button>
+        <span v-if="(authStore.user?.frozenBalance ?? 0) > 0" class="frozen">
+          冻结：
+          <strong>¥{{ formatBalance(authStore.user?.frozenBalance ?? 0) }}</strong>
+        </span>
+        <UserSwitcher />
       </div>
     </header>
 
@@ -126,26 +98,8 @@ function formatBalance(balance: number): string {
   font-size: 14px;
 }
 
-.username {
-  color: #fff;
-}
-
 .balance strong {
   color: #52c41a;
-}
-
-.btn-logout {
-  padding: 4px 16px;
-  background: transparent;
-  color: #fff;
-  border: 1px solid #fff;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.btn-logout:hover {
-  background: rgba(255, 255, 255, 0.1);
 }
 
 .dashboard-body {

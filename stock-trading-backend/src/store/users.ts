@@ -7,7 +7,7 @@ const users = new Map<string, User>()
 export const usersStore = {
   create(username: string, password: string): User {
     const id = uuid()
-    const user: User = { id, username, password, balance: INITIAL_BALANCE }
+    const user: User = { id, username, password, balance: INITIAL_BALANCE, frozenBalance: 0 }
     users.set(id, user)
     return user
   },
@@ -29,6 +29,29 @@ export const usersStore = {
     const user = users.get(id)
     if (!user) return undefined
     user.balance += delta
+    return user
+  },
+
+  freezeBalance(id: string, amount: number): User | undefined {
+    const user = users.get(id)
+    if (!user) return undefined
+    user.balance -= amount
+    user.frozenBalance += amount
+    return user
+  },
+
+  unfreezeBalance(id: string, amount: number): User | undefined {
+    const user = users.get(id)
+    if (!user) return undefined
+    user.balance += amount
+    user.frozenBalance -= amount
+    return user
+  },
+
+  consumeFrozen(id: string, amount: number): User | undefined {
+    const user = users.get(id)
+    if (!user) return undefined
+    user.frozenBalance -= amount
     return user
   },
 
