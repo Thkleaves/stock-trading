@@ -2,21 +2,22 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useTheme } from '@/composables/useTheme'
+import { useSessionStore } from '@/stores/sessions'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
-const { isDark, toggle } = useTheme()
+const sessionStore = useSessionStore()
 
 const isRegister = ref(route.query.add === '1')
 const username = ref('')
 const password = ref('')
 const errorMsg = ref('')
+const submitting = ref(false)
 
 const title = computed(() => isRegister.value ? '添加账号' : '交易系统登录')
 
-function submit() {
+async function submit() {
   errorMsg.value = ''
   const u = username.value.trim()
   const p = password.value.trim()
@@ -24,7 +25,19 @@ function submit() {
     errorMsg.value = '请输入用户名和密码'
     return
   }
-  auth.guestLogin(u, p)
+
+  submitting.value = true
+  const result = isRegister.value
+    ? await auth.reg({ username: u, password: p })
+    : await auth.login({ username: u, password: p })
+  submitting.value = false
+
+  if (!result.ok) {
+    errorMsg.value = result.message || '操作失败'
+    return
+  }
+
+  sessionStore.add(auth.userId, auth.username, p)
   router.push('/')
 }
 </script>
@@ -34,12 +47,6 @@ function submit() {
     <div class="login-card card">
       <div class="login-header">
         <h2>{{ title }}</h2>
-        <div class="theme-toggle" @click="toggle">
-          <span class="theme-label">{{ isDark ? '暗' : '亮' }}</span>
-          <div :class="['toggle-track', { dark: isDark }]">
-            <div class="toggle-thumb" />
-          </div>
-        </div>
       </div>
 
       <div class="login-form">
@@ -63,8 +70,9 @@ function submit() {
 
         <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
 
-        <button class="btn btn-primary login-btn" @click="submit">
-          {{ isRegister ? '添加' : '登录' }}
+        <button class="btn btn-primary login-btn" :disabled="submitting" @click="submit">
+          <span v-if="submitting">处理中...</span>
+          <span v-else>{{ isRegister ? '添加' : '登录' }}</span>
         </button>
 
         <div class="toggle-mode">
@@ -150,48 +158,5 @@ function submit() {
 
 .toggle-mode a {
   color: var(--accent-neon);
-}
-
-.theme-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.theme-label {
-  font-size: 11px;
-  font-family: var(--font-mono);
-  color: var(--text-muted);
-}
-
-.toggle-track {
-  width: 32px;
-  height: 16px;
-  border-radius: 8px;
-  background: var(--border-accent);
-  position: relative;
-  transition: background 0.25s;
-}
-
-.toggle-track.dark {
-  background: var(--accent);
-}
-
-.toggle-thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.toggle-track.dark .toggle-thumb {
-  transform: translateX(16px);
 }
 </style>

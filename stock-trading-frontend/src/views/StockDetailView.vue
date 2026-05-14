@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { MOCK_USER_ORDERS } from '@/data/mock'
-import type { ChartMode, UserOrder } from '@/data/mock'
+import type { ChartMode } from '@/data/mock'
+import type { Order } from '@/types'
 import KLineChart from '@/components/KLineChart.vue'
 import { useSimulation } from '@/composables/useSimulation'
+import { useOrderStore } from '@/stores/order'
+import { usePositionStore } from '@/stores/position'
+import { useAuthStore } from '@/stores/auth'
+import { api } from '@/services/api'
 
 const route = useRoute()
 const router = useRouter()
+const orderStore = useOrderStore()
+const positionStore = usePositionStore()
+const authStore = useAuthStore()
 
 const {
   currentTime,
@@ -61,8 +68,8 @@ function setMode(mode: ChartMode) {
   chartMode.value = mode
 }
 
-const stockOrders = computed<UserOrder[]>(() =>
-  MOCK_USER_ORDERS.filter((o) => o.stockCode === stockCode.value)
+const stockOrders = computed<Order[]>(() =>
+  orderStore.orders.filter((o) => o.stockCode === stockCode.value)
 )
 
 const pendingBuyCount = computed(() =>
@@ -74,6 +81,26 @@ const pendingSellCount = computed(() =>
   stockOrders.value.filter((o) => o.type === 'sell' && (o.status === 'pending' || o.status === 'partial'))
     .reduce((s, o) => s + o.quantity - o.filledQuantity, 0)
 )
+
+function stockNameByCode(code: string): string {
+  return stockRefs.value[code]?.name ?? code
+}
+
+function formatOrderTime(ts: number): string {
+  const d = new Date(ts)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+function orderStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    pending: '待成交',
+    partial: '部分成交',
+    filled: '已成交',
+    cancelled: '已撤',
+  }
+  return map[status] ?? status
+}
 
 const orderPrice = ref(0)
 const orderQuantity = ref(100)
@@ -100,8 +127,9 @@ function goBack() {
 }
 
 const tradeFeedback = ref('')
+const orderSubmitting = ref(false)
 
-function handleBuy() {
+async function handleBuy() {
   const p = orderPrice.value
   const q = orderQuantity.value
   if (p <= 0) {
@@ -114,11 +142,39 @@ function handleBuy() {
     setTimeout(() => (tradeFeedback.value = ''), 2500)
     return
   }
-  tradeFeedback.value = `买入委托已提交：${stockCode.value} ${q}手 @¥${p.toFixed(2)}`
-  setTimeout(() => (tradeFeedback.value = ''), 3000)
+  if (q % 100 !== 0) {
+    tradeFeedback.value = '买入数量必须为100的整数倍'
+    setTimeout(() => (tradeFeedback.value = ''), 2500)
+    return
+  }
+  const cost = p * q
+  if (cost > authStore.balance) {
+    tradeFeedback.value = '余额不足'
+    setTimeout(() => (tradeFeedback.value = ''), 2500)
+    return
+  }
+
+  orderSubmitting.value = true
+  try {
+    const result = await api.post('/api/orders', {
+      stockCode: stockCode.value,
+      type: 'buy',
+      price: p,
+      quantity: q,
+    }) as unknown as { order: Order; trades: unknown[] }
+
+    const statusText = result.order.status === 'filled' ? '已成交' : result.order.status === 'partial' ? '部分成交' : '已挂单'
+    tradeFeedback.value = `买入${statusText}：${stockCode.value} ${q}股 @¥${p.toFixed(2)}`
+    setTimeout(() => (tradeFeedback.value = ''), 3000)
+  } catch (err: any) {
+    tradeFeedback.value = err?.message || '下单失败'
+    setTimeout(() => (tradeFeedback.value = ''), 3000)
+  } finally {
+    orderSubmitting.value = false
+  }
 }
 
-function handleSell() {
+async function handleSell() {
   const p = orderPrice.value
   const q = orderQuantity.value
   if (p <= 0) {
@@ -131,8 +187,42 @@ function handleSell() {
     setTimeout(() => (tradeFeedback.value = ''), 2500)
     return
   }
-  tradeFeedback.value = `卖出委托已提交：${stockCode.value} ${q}手 @¥${p.toFixed(2)}`
-  setTimeout(() => (tradeFeedback.value = ''), 3000)
+
+  const pos = positionStore.positions.find((pos) => pos.stockCode === stockCode.value)
+  if (!pos) {
+    tradeFeedback.value = '您未持有该股票'
+    setTimeout(() => (tradeFeedback.value = ''), 2500)
+    return
+  }
+  if (q > pos.quantity) {
+    tradeFeedback.value = '持仓不足'
+    setTimeout(() => (tradeFeedback.value = ''), 2500)
+    return
+  }
+  if (pos.quantity < 100 && q !== pos.quantity) {
+    tradeFeedback.value = `持仓不足100股（${pos.quantity}股），必须全额卖出`
+    setTimeout(() => (tradeFeedback.value = ''), 3000)
+    return
+  }
+
+  orderSubmitting.value = true
+  try {
+    const result = await api.post('/api/orders', {
+      stockCode: stockCode.value,
+      type: 'sell',
+      price: p,
+      quantity: q,
+    }) as unknown as { order: Order; trades: unknown[] }
+
+    const statusText = result.order.status === 'filled' ? '已成交' : result.order.status === 'partial' ? '部分成交' : '已挂单'
+    tradeFeedback.value = `卖出${statusText}：${stockCode.value} ${q}股 @¥${p.toFixed(2)}`
+    setTimeout(() => (tradeFeedback.value = ''), 3000)
+  } catch (err: any) {
+    tradeFeedback.value = err?.message || '下单失败'
+    setTimeout(() => (tradeFeedback.value = ''), 3000)
+  } finally {
+    orderSubmitting.value = false
+  }
 }
 </script>
 
@@ -160,10 +250,10 @@ function handleSell() {
         </div>
         <div class="meta-orders">
           <span v-if="pendingBuyCount > 0" class="order-tag buy-tag">
-            买挂 {{ pendingBuyCount }}手
+            买挂 {{ pendingBuyCount }}股
           </span>
           <span v-if="pendingSellCount > 0" class="order-tag sell-tag">
-            卖挂 {{ pendingSellCount }}手
+            卖挂 {{ pendingSellCount }}股
           </span>
           <span v-if="pendingBuyCount === 0 && pendingSellCount === 0" class="order-tag none-tag">
             暂无挂单
@@ -175,22 +265,21 @@ function handleSell() {
     <div class="detail-body">
       <div class="chart-section card">
         <div class="card-header">
-          <h3>K线图</h3>
-          <div class="period-selector">
+          <div class="mode-segment">
             <button
-              :class="['btn btn-sm', { active: chartMode === 'realtime' }]"
+              :class="['seg-btn', { active: chartMode === 'realtime' }]"
               @click="setMode('realtime')"
             >实时</button>
             <button
-              :class="['btn btn-sm', { active: chartMode === 'day' }]"
+              :class="['seg-btn', { active: chartMode === 'day' }]"
               @click="setMode('day')"
             >日K</button>
             <button
-              :class="['btn btn-sm', { active: chartMode === 'week' }]"
+              :class="['seg-btn', { active: chartMode === 'week' }]"
               @click="setMode('week')"
             >周K</button>
             <button
-              :class="['btn btn-sm', { active: chartMode === 'month' }]"
+              :class="['seg-btn', { active: chartMode === 'month' }]"
               @click="setMode('month')"
             >月K</button>
           </div>
@@ -219,12 +308,12 @@ function handleSell() {
             <input v-model.number="orderPrice" type="number" step="0.01" />
           </div>
           <div class="form-group">
-            <label>数量（手）</label>
+            <label>数量（股）</label>
             <input v-model.number="orderQuantity" type="number" step="100" min="100" />
           </div>
           <div class="btn-row">
-            <button class="btn btn-up flex-1" @click="handleBuy">买入</button>
-            <button class="btn btn-down flex-1" @click="handleSell">卖出</button>
+            <button class="btn btn-up flex-1" :disabled="orderSubmitting" @click="handleBuy">买入</button>
+            <button class="btn btn-down flex-1" :disabled="orderSubmitting" @click="handleSell">卖出</button>
           </div>
           <div v-if="tradeFeedback" class="trade-toast">{{ tradeFeedback }}</div>
         </div>
@@ -244,7 +333,7 @@ function handleSell() {
                 {{ o.type === 'buy' ? '买' : '卖' }}
               </span>
               <span class="mono">{{ o.price.toFixed(2) }}</span>
-              <span class="mono">{{ o.quantity }}手</span>
+              <span class="mono">{{ o.quantity }}股</span>
               <span class="mono text-muted">已成交{{ o.filledQuantity }}</span>
               <span :class="o.status === 'filled' ? 'color-up' : o.status === 'cancelled' ? 'color-flat' : 'color-down'">
                 {{ o.status === 'pending' ? '待成交' : o.status === 'partial' ? '部分' : o.status === 'filled' ? '已成交' : '已撤' }}
@@ -440,20 +529,44 @@ function handleSell() {
   font-size: 11px;
 }
 
-.period-selector {
+.mode-segment {
   display: flex;
-  gap: 2px;
+  background: var(--bg-muted, #f0f3f6);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 0;
 }
 
-.period-selector .btn-sm {
-  padding: 3px 10px;
-  font-size: 11px;
+.seg-btn {
+  padding: 4px 14px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.period-selector .active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+.seg-btn:hover {
+  color: var(--text-primary);
+}
+
+.seg-btn.active {
+  background: #fff;
+  color: var(--accent, #2563eb);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='dark'] .mode-segment {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme='dark'] .seg-btn.active {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .sim-clock {

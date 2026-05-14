@@ -117,10 +117,20 @@ function getVisibleRange(): { start: number; end: number } {
   if (!canvas) return { start: 0, end: effectiveDataCount() }
   const pad = { left: 50, right: 48 }
   const chartW = canvas.clientWidth - pad.left - pad.right
-  const step = view.barWidth + view.barGap
-  const visibleCount = Math.floor(chartW / step)
   const total = effectiveDataCount()
   if (total < 1) return { start: 0, end: 0 }
+
+  const maxFitBarWidth = (chartW - 1) / total
+  const fitStep = 6 + 1
+  const defaultVisible = Math.floor(chartW / fitStep)
+  if (total <= defaultVisible) {
+    view.barWidth = Math.min(maxFitBarWidth - 0.5, 16)
+    view.barGap = Math.max(0.5, view.barWidth * 0.15)
+    return { start: 0, end: total }
+  }
+
+  const step = view.barWidth + view.barGap
+  const visibleCount = Math.floor(chartW / step)
   if (isRealtimeMode()) {
     const start = Math.max(0, total - visibleCount)
     const end = total
@@ -397,8 +407,8 @@ function draw() {
     ctx.stroke()
     ctx.setLineDash([])
 
-    const tooltipW = 146
-    const tooltipH = isCandleMode() ? 52 : 36
+    const tooltipW = 130
+    const tooltipH = isCandleMode() ? 112 : 40
     let tx = cx + 14
     let ty = cy - tooltipH - 10
     if (tx + tooltipW > w - 4) tx = cx - tooltipW - 14
@@ -412,14 +422,23 @@ function draw() {
     ctx.font = '10px -apple-system, sans-serif'
     ctx.textAlign = 'left'
 
-    ctx.fillText(`${crosshair.dateLabel}`, tx + 6, ty + 14)
-    ctx.fillText(`价格: ${crosshair.price.toFixed(2)}`, tx + 6, ty + 28)
+    let rowY = ty + 14
+    ctx.fillText(`${crosshair.dateLabel}`, tx + 6, rowY)
+    rowY += 16
+    ctx.fillText(`价格: ${crosshair.price.toFixed(2)}`, tx + 6, rowY)
 
     if (isCandleMode()) {
       const idx = crosshair.index
       if (idx >= 0 && idx < slice.length) {
         const kd = (slice as KLineData[])[idx]
-        ctx.fillText(`O:${kd.open} H:${kd.high} L:${kd.low} C:${kd.close}`, tx + 6, ty + 42)
+        rowY += 16
+        ctx.fillText(`开: ${kd.open}`, tx + 6, rowY)
+        rowY += 16
+        ctx.fillText(`高: ${kd.high}`, tx + 6, rowY)
+        rowY += 16
+        ctx.fillText(`低: ${kd.low}`, tx + 6, rowY)
+        rowY += 16
+        ctx.fillText(`收: ${kd.close}`, tx + 6, rowY)
       }
     }
   }

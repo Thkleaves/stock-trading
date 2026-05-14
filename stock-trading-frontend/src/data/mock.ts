@@ -1,3 +1,5 @@
+import { reactive } from 'vue'
+
 export interface StockInfo {
   code: string
   name: string
@@ -260,7 +262,7 @@ STOCK_DEFS.forEach((def) => {
   })
 })
 
-export const MOCK_USER_PROFILE: UserProfile = {
+export const MOCK_USER_PROFILE = reactive<UserProfile>({
   balance: 456_230.50,
   totalPnl: 82_345.20,
   totalPnlPercent: 12.34,
@@ -276,9 +278,9 @@ export const MOCK_USER_PROFILE: UserProfile = {
       value: Math.round(base + i * 2000 + noise),
     }
   }),
-}
+})
 
-export const MOCK_USER_ORDERS: UserOrder[] = [
+export const MOCK_USER_ORDERS = reactive<UserOrder[]>([
   { id: 'o1', stockCode: '600519', stockName: '贵州茅台', type: 'buy', price: 1650, quantity: 100, filledQuantity: 100, status: 'filled', time: '2025-05-10 10:30:00' },
   { id: 'o2', stockCode: '000858', stockName: '五粮液', type: 'buy', price: 150.5, quantity: 500, filledQuantity: 500, status: 'filled', time: '2025-05-10 14:15:00' },
   { id: 'o3', stockCode: '002594', stockName: '比亚迪', type: 'buy', price: 230, quantity: 300, filledQuantity: 300, status: 'filled', time: '2025-05-08 09:45:00' },
@@ -286,9 +288,9 @@ export const MOCK_USER_ORDERS: UserOrder[] = [
   { id: 'o5', stockCode: '600030', stockName: '中信证券', type: 'sell', price: 24, quantity: 1000, filledQuantity: 1000, status: 'filled', time: '2025-05-06 13:00:00' },
   { id: 'o6', stockCode: '300750', stockName: '宁德时代', type: 'buy', price: 178, quantity: 200, filledQuantity: 0, status: 'pending', time: '2025-05-12 15:00:00' },
   { id: 'o7', stockCode: '601318', stockName: '中国平安', type: 'sell', price: 45, quantity: 300, filledQuantity: 0, status: 'pending', time: '2025-05-12 14:30:00' },
-]
+])
 
-export const MOCK_USER_TRADES: UserTrade[] = [
+export const MOCK_USER_TRADES = reactive<UserTrade[]>([
   { id: 't1', stockCode: '600519', stockName: '贵州茅台', type: 'buy', price: 1650, quantity: 100, time: '2025-05-10 10:30:12', pnl: 0 },
   { id: 't2', stockCode: '000858', stockName: '五粮液', type: 'buy', price: 150.5, quantity: 500, time: '2025-05-10 14:15:33', pnl: 0 },
   { id: 't3', stockCode: '002594', stockName: '比亚迪', type: 'buy', price: 230, quantity: 300, time: '2025-05-08 09:45:08', pnl: 0 },
@@ -297,15 +299,15 @@ export const MOCK_USER_TRADES: UserTrade[] = [
   { id: 't6', stockCode: '002415', stockName: '海康威视', type: 'buy', price: 31.5, quantity: 600, time: '2025-05-05 10:15:00', pnl: 0 },
   { id: 't7', stockCode: '600900', stockName: '长江电力', type: 'buy', price: 27.8, quantity: 2000, time: '2025-05-03 14:20:00', pnl: 0 },
   { id: 't8', stockCode: '000651', stockName: '格力电器', type: 'sell', price: 40.2, quantity: 500, time: '2025-05-01 09:50:00', pnl: -1500 },
-]
+])
 
-export const MOCK_USER_POSITIONS: UserPosition[] = [
+export const MOCK_USER_POSITIONS = reactive<UserPosition[]>([
   { stockCode: '600519', stockName: '贵州茅台', quantity: 100, avgPrice: 1650, currentPrice: 1685.30, pnl: 3530, pnlPercent: 2.14 },
   { stockCode: '000858', stockName: '五粮液', quantity: 500, avgPrice: 150.5, currentPrice: 157.20, pnl: 3350, pnlPercent: 4.45 },
   { stockCode: '002594', stockName: '比亚迪', quantity: 300, avgPrice: 230, currentPrice: 240.50, pnl: 3150, pnlPercent: 4.57 },
   { stockCode: '002415', stockName: '海康威视', quantity: 600, avgPrice: 31.5, currentPrice: 33.10, pnl: 960, pnlPercent: 5.08 },
   { stockCode: '600900', stockName: '长江电力', quantity: 2000, avgPrice: 27.8, currentPrice: 28.45, pnl: 1300, pnlPercent: 2.34 },
-]
+])
 
 export function getStockKLines(code: string): KLineData[] {
   return MOCK_STOCKS[code] || []

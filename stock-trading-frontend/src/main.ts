@@ -5,15 +5,20 @@ import App from './App.vue'
 import './assets/main.css'
 import { useAuthStore } from '@/stores/auth'
 
-const app = createApp(App)
-app.use(createPinia())
-app.use(router)
+async function bootstrap() {
+  const app = createApp(App)
+  const pinia = createPinia()
+  app.use(pinia)
+  app.use(router)
 
-const auth = useAuthStore()
-auth.restoreAuth()
+  const auth = useAuthStore()
+  const hasSession = await auth.restoreSession()
 
-if (!auth.userId) {
-  router.push('/login')
+  if (!hasSession) {
+    router.push('/login')
+  }
+
+  app.mount('#app')
 }
 
-app.mount('#app')
+bootstrap()

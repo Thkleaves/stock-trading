@@ -32,28 +32,30 @@ function closeDropdown() {
   showDropdown.value = false
 }
 
-function handleSwitch(session: StoredSession) {
+async function handleSwitch(session: StoredSession) {
   if (session.userId === authStore.userId) {
     closeDropdown()
     return
   }
   closeDropdown()
-  authStore.guestSwitchUser(session)
+  await authStore.logout()
+  const result = await authStore.login({ username: session.username, password: session.password })
+  if (!result.ok) {
+    sessionStore.remove(session.userId)
+  }
 }
 
 function handleDelete(session: StoredSession, event: Event) {
   event.stopPropagation()
-  authStore.deleteSessionAndLogout(session.userId)
-
-  if (authStore.userId) {
-    return
-  }
-
-  const remaining = sessionStore.sessions.value
-  if (remaining.length > 0) {
-    handleSwitch(remaining[0])
-  } else {
-    router.push('/login')
+  sessionStore.remove(session.userId)
+  if (session.userId === authStore.userId) {
+    authStore.logout()
+    const remaining = sessionStore.sessions.value
+    if (remaining.length > 0) {
+      handleSwitch(remaining[0])
+    } else {
+      router.push('/login')
+    }
   }
 }
 
@@ -62,13 +64,10 @@ function handleAddAccount() {
   router.push('/login?add=1')
 }
 
-function handleLogout() {
+async function handleLogout() {
   closeDropdown()
-  const uid = authStore.userId
-  authStore.guestLogout()
-  if (uid) {
-    sessionStore.remove(uid)
-  }
+  await authStore.logout()
+  sessionStore.clearActive()
   router.push('/login')
 }
 </script>
@@ -76,7 +75,7 @@ function handleLogout() {
 <template>
   <div ref="root" class="user-switcher">
     <button class="switcher-trigger" @click="toggleDropdown">
-      <span class="current-user">{{ authStore.user?.username ?? '未登录' }}</span>
+      <span class="current-user">{{ authStore.username || '未登录' }}</span>
       <span class="arrow">▾</span>
     </button>
 

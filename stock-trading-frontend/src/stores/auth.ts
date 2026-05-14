@@ -1,103 +1,100 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { UserInfo } from '@/types'
-import { useSessionStore, type StoredSession } from '@/stores/sessions'
+import { api } from '@/services/api'
+import { marketWebSocket } from '@/services/websocket'
 
-function genUserId() {
-  return 'u-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8)
+export interface LoginParams {
+  username: string
+  password: string
 }
 
-function createUserInfo(id: string, name: string): UserInfo {
-  return {
-    userId: id,
-    username: name,
-    balance: 1_000_000,
-    frozenBalance: 0,
-  }
+export interface UserData {
+  userId: string
+  username: string
+  balance: number
+  frozenBalance?: number
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const sessionStore = useSessionStore()
-  const user = ref<UserInfo | null>(null)
-  const userId = ref<string | null>(null)
+  const userId = ref('')
+  const username = ref('')
+  const balance = ref(0)
+  const frozenBalance = ref(0)
+  const initLoading = ref(true)
 
   const isLoggedIn = computed(() => !!userId.value)
 
-  function setUserData(data: { balance: number; frozenBalance: number }) {
-    if (user.value) {
-      user.value = { ...user.value, balance: data.balance, frozenBalance: data.frozenBalance }
-    }
-  }
-
-  function setAuth(userInfo: UserInfo, id: string) {
-    user.value = userInfo
-    userId.value = id
-  }
-
-  function restoreAuth() {
-    const activeId = sessionStore.activeUserId.value
-    if (!activeId) return
-    const cachedUser = localStorage.getItem('user')
-    if (cachedUser) {
-      const parsed = JSON.parse(cachedUser) as UserInfo
-      if (parsed.userId === activeId) {
-        userId.value = activeId
-        user.value = parsed
-        return
+  async function login(params: LoginParams): Promise<{ ok: boolean; message?: string }> {
+    try {
+      const data = await api.post('/api/auth/login', params) as unknown as UserData
+      if (data && data.userId) {
+        applyUserData(data)
+        marketWebSocket.connect(data.userId)
+        return { ok: true }
       }
+      return { ok: false, message: '登录失败' }
+    } catch (err: any) {
+      return { ok: false, message: err?.message || '登录请求异常' }
     }
   }
 
-  function guestLogin(username: string, password: string) {
-    const existing = sessionStore.findByUsername(username)
-    let id: string
-    if (existing) {
-      id = existing.userId
-    } else {
-      id = genUserId()
+  async function reg(params: LoginParams): Promise<{ ok: boolean; message?: string }> {
+    try {
+      const data = await api.post('/api/auth/register', params) as unknown as UserData
+      if (data && data.userId) {
+        applyUserData(data)
+        marketWebSocket.connect(data.userId)
+        return { ok: true }
+      }
+      return { ok: false, message: '注册失败' }
+    } catch (err: any) {
+      return { ok: false, message: err?.message || '注册请求异常' }
     }
-    const info = createUserInfo(id, username)
-    setAuth(info, id)
-    sessionStore.add(id, username, password)
-    localStorage.setItem('user', JSON.stringify(info))
   }
 
-  function guestSwitchUser(session: StoredSession) {
-    const info = createUserInfo(session.userId, session.username)
-    setAuth(info, session.userId)
-    localStorage.setItem('user', JSON.stringify(info))
-    sessionStore.setActive(session.userId)
-  }
-
-  function clearCurrentUser() {
-    user.value = null
-    userId.value = null
-    localStorage.removeItem('user')
-  }
-
-  function guestLogout() {
-    clearCurrentUser()
-    sessionStore.clearActive()
-  }
-
-  function deleteSessionAndLogout(userIdToRemove: string) {
-    if (userIdToRemove === userId.value) {
-      clearCurrentUser()
+  async function restoreSession(): Promise<boolean> {
+    initLoading.value = true
+    try {
+      const data = await api.get('/api/auth/user') as unknown as UserData
+      if (data && data.userId) {
+        applyUserData(data)
+        marketWebSocket.connect(data.userId)
+        initLoading.value = false
+        return true
+      }
+    } catch {
+      // cookie 过期或不存在
     }
-    sessionStore.remove(userIdToRemove)
+    initLoading.value = false
+    return false
   }
 
-  return {
-    user,
-    userId,
-    isLoggedIn,
-    guestLogin,
-    setUserData,
-    guestSwitchUser,
-    guestLogout,
-    deleteSessionAndLogout,
-    clearCurrentUser,
-    restoreAuth,
-    sessionStore,
+  async function logout() {
+    marketWebSocket.disconnect()
+    try {
+      await api.post('/api/auth/logout')
+    } catch {
+      // 即使后端通知失败也清除本地状态
+    }
+    userId.value = ''
+    username.value = ''
+    balance.value = 0
+    frozenBalance.value = 0
   }
+
+  function applyUserData(data: UserData) {
+    userId.value = data.userId
+    username.value = data.username
+    balance.value = data.balance
+    frozenBalance.value = data.frozenBalance ?? 0
+  }
+
+  function setUserData(data: { userId?: string; username?: string; balance: number; frozenBalance: number }) {
+    if (data.userId !== undefined) userId.value = data.userId
+    if (data.username !== undefined) username.value = data.username
+    balance.value = data.balance
+    frozenBalance.value = data.frozenBalance ?? 0
+  }
+
+  return { userId, username, balance, frozenBalance, isLoggedIn, initLoading, login, reg, restoreSession, logout, setUserData }
 })

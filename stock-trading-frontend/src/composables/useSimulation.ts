@@ -428,18 +428,33 @@ let initPromise: Promise<void> | null = null
 
 function fastForward(sec: number) {
   for (let i = 0; i < sec; i++) {
-    engine.advance()
+    const s = engine.advance()
+    if (s === null) break
+    const stockCodes = engine.getStocks()
+    for (const code of stockCodes) {
+      const price = engine.getPriceAt(code, s)
+      if (price !== null) {
+        currentPrices[code] = price
+      }
+      const vol = engine.getVolumeAt(code, s)
+      const p = price || currentPrices[code]
+      stockTicks[code].push({
+        time: secondToTime(s),
+        price: p,
+        volume: vol,
+      })
+    }
+    const idxPrice = computeIndexPrice()
+    if (idxPrice !== null) {
+      currentPrices['000001'] = idxPrice
+      indexTicks.value.push({
+        time: secondToTime(s),
+        price: idxPrice,
+        volume: 0,
+      })
+    }
   }
-  const stockCodes = engine.getStocks()
-  for (const code of stockCodes) {
-    const price = engine.getPriceAt(code, sec) || currentPrices[code]
-    currentPrices[code] = price
-  }
-  const idxPrice = computeIndexPrice()
-  if (idxPrice !== null) {
-    currentPrices['000001'] = idxPrice
-  }
-  currentTime.value = secondToTime(sec)
+  currentTime.value = secondToTime(engine.getCurrentSecond())
 }
 
 function init() {

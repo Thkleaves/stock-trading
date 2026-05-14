@@ -1,16 +1,28 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useTheme } from '@/composables/useTheme'
-import UserSwitcher from '@/components/UserSwitcher.vue'
-import {
-  MOCK_USER_PROFILE,
-  MOCK_USER_POSITIONS,
-  MOCK_USER_TRADES,
-} from '@/data/mock'
+import { useSimulation } from '@/composables/useSimulation'
+import { useAuthStore } from '@/stores/auth'
+import { usePositionStore } from '@/stores/position'
+import { useTradeStore } from '@/stores/trade'
 
 const { isDark } = useTheme()
+const { currentPrices, stockRefs } = useSimulation()
+const authStore = useAuthStore()
+const positionStore = usePositionStore()
+const tradeStore = useTradeStore()
 
 const activeTab = ref<'positions' | 'trades'>('positions')
+
+function stockNameByCode(code: string): string {
+  return stockRefs.value[code]?.name ?? code
+}
+
+function formatTime(ts: number): string {
+  const d = new Date(ts)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
 
 function formatMoney(v: number): string {
   const abs = Math.abs(v)
@@ -27,15 +39,45 @@ function formatPnl(v: number): string {
   return `${sign}${formatMoney(v)}`
 }
 
+function pnlVal(pos: { quantity: number; avgPrice: number; stockCode: string }): number {
+  const cp = currentPrices[pos.stockCode] ?? pos.avgPrice
+  return +((cp - pos.avgPrice) * pos.quantity).toFixed(2)
+}
+
+function pnlPercentVal(pos: { quantity: number; avgPrice: number; stockCode: string }): number {
+  const cp = currentPrices[pos.stockCode] ?? pos.avgPrice
+  return pos.avgPrice > 0 ? +(((cp - pos.avgPrice) / pos.avgPrice) * 100).toFixed(2) : 0
+}
+
+const positions = computed(() => positionStore.positions)
+
+const marketValue = computed(() =>
+  positions.value.reduce((sum, p) => {
+    const cp = currentPrices[p.stockCode] ?? p.avgPrice
+    return sum + cp * p.quantity
+  }, 0)
+)
+
+const totalPnl = computed(() =>
+  positions.value.reduce((sum, p) => sum + pnlVal(p), 0)
+)
+
+const totalPnlPercent = computed(() => {
+  const cost = positions.value.reduce((sum, p) => sum + p.avgPrice * p.quantity, 0)
+  return cost > 0 ? (totalPnl.value / cost) * 100 : 0
+})
+
+const totalAsset = computed(() => authStore.balance + marketValue.value)
+
 const outlineCards = computed(() => [
-  { label: '总资产', value: MOCK_USER_PROFILE.totalAsset, color: '' },
-  { label: '持仓市值', value: MOCK_USER_PROFILE.marketValue, color: '' },
-  { label: '可用余额', value: MOCK_USER_PROFILE.balance, color: '' },
+  { label: '总资产', value: totalAsset.value, color: '' },
+  { label: '持仓市值', value: +marketValue.value.toFixed(2), color: '' },
+  { label: '可用余额', value: authStore.balance, color: '' },
   {
     label: '累计盈亏',
-    value: MOCK_USER_PROFILE.totalPnl,
-    color: MOCK_USER_PROFILE.totalPnl >= 0 ? 'color-up' : 'color-down',
-    suffix: ` (${MOCK_USER_PROFILE.totalPnlPercent >= 0 ? '+' : ''}${MOCK_USER_PROFILE.totalPnlPercent}%)`,
+    value: totalPnl.value,
+    color: totalPnl.value >= 0 ? 'color-up' : 'color-down',
+    suffix: ` (${totalPnlPercent.value >= 0 ? '+' : ''}${totalPnlPercent.value.toFixed(2)}%)`,
   },
 ])
 
@@ -78,7 +120,7 @@ function drawPnlCurve() {
   ctx.fillStyle = tc.bg
   ctx.fillRect(0, 0, w, h)
 
-  const data = MOCK_USER_PROFILE.pnlCurve
+  const data: { date: string; value: number }[] = []
   if (data.length < 2) return
 
   const values = data.map((d) => d.value)
@@ -170,10 +212,6 @@ watch(isDark, () => {
 
 <template>
   <div class="profile-view">
-    <div class="user-bar">
-      <UserSwitcher />
-    </div>
-
     <div class="asset-cards">
       <div
         v-for="card in outlineCards"
@@ -232,19 +270,19 @@ watch(isDark, () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="p in MOCK_USER_POSITIONS" :key="p.stockCode">
+              <tr v-for="p in positions" :key="p.stockCode">
                 <td>
-                  <span class="pos-name">{{ p.stockName }}</span>
+                  <span class="pos-name">{{ stockNameByCode(p.stockCode) }}</span>
                   <span class="pos-code">{{ p.stockCode }}</span>
                 </td>
                 <td class="mono">{{ p.quantity }}股</td>
                 <td class="mono">{{ p.avgPrice.toFixed(2) }}</td>
-                <td class="mono">{{ p.currentPrice.toFixed(2) }}</td>
-                <td :class="['mono', p.pnl >= 0 ? 'color-up' : 'color-down']">
-                  {{ formatPnl(p.pnl) }}
+                <td class="mono">{{ (currentPrices[p.stockCode] ?? p.avgPrice).toFixed(2) }}</td>
+                <td :class="['mono', pnlVal(p) >= 0 ? 'color-up' : 'color-down']">
+                  {{ formatPnl(pnlVal(p)) }}
                 </td>
-                <td :class="['mono', p.pnlPercent >= 0 ? 'color-up' : 'color-down']">
-                  {{ p.pnlPercent >= 0 ? '+' : '' }}{{ p.pnlPercent.toFixed(2) }}%
+                <td :class="['mono', pnlVal(p) >= 0 ? 'color-up' : 'color-down']">
+                  {{ pnlVal(p) >= 0 ? '+' : '' }}{{ pnlPercentVal(p).toFixed(2) }}%
                 </td>
               </tr>
             </tbody>
@@ -264,9 +302,9 @@ watch(isDark, () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="t in MOCK_USER_TRADES" :key="t.id">
+              <tr v-for="t in tradeStore.trades" :key="t.id">
                 <td>
-                  <span class="pos-name">{{ t.stockName }}</span>
+                  <span class="pos-name">{{ stockNameByCode(t.stockCode) }}</span>
                   <span class="pos-code">{{ t.stockCode }}</span>
                 </td>
                 <td :class="t.type === 'buy' ? 'color-up' : 'color-down'">
@@ -274,10 +312,10 @@ watch(isDark, () => {
                 </td>
                 <td class="mono">{{ t.price.toFixed(2) }}</td>
                 <td class="mono">{{ t.quantity }}股</td>
-                <td :class="['mono', t.pnl >= 0 ? 'color-up' : 'color-down']">
-                  {{ t.pnl === 0 ? '--' : (t.pnl >= 0 ? '+' : '') + t.pnl.toFixed(2) }}
+                <td :class="['mono', t.type === 'buy' ? 'color-up' : 'color-down']">
+                  {{ t.type === 'buy' ? '--' : '--' }}
                 </td>
-                <td class="mono text-muted">{{ t.time.slice(5) }}</td>
+                <td class="mono text-muted">{{ formatTime(t.time).slice(5) }}</td>
               </tr>
             </tbody>
           </table>
@@ -295,13 +333,6 @@ watch(isDark, () => {
   padding: 8px;
   gap: 8px;
   overflow: hidden;
-}
-
-.user-bar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-shrink: 0;
 }
 
 .asset-cards {
