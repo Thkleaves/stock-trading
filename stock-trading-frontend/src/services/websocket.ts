@@ -3,8 +3,9 @@ import { useOrderStore } from '@/stores/order'
 import { usePositionStore } from '@/stores/position'
 import { useTradeStore } from '@/stores/trade'
 import { useAuthStore } from '@/stores/auth'
+import { usePnlCurveStore } from '@/stores/pnlCurve'
 import { api } from '@/services/api'
-import type { WsMessage, WsQuoteData, WsQuotesData, WsOrderData, WsPositionData, WsTradeData, WsUserData, WsSyncData, WsErrorData, Trade, Order, Position } from '@/types'
+import type { WsMessage, WsQuoteData, WsQuotesData, WsOrderData, WsPositionData, WsTradeData, WsUserData, WsSyncData, WsErrorData, Trade, Order, Position, PnlCurveEntry } from '@/types'
 
 const WS_URL = 'ws://localhost:3001'
 const MAX_RECONNECT_INTERVAL = 30000
@@ -148,6 +149,9 @@ class MarketWebSocket {
         useTradeStore().resetEventSeq()
         if (data.user) {
           useAuthStore().setUserData(data.user)
+        }
+        if (data.pnlCurve) {
+          usePnlCurveStore().setData(data.pnlCurve as PnlCurveEntry[])
         }
         break
       }

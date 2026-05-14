@@ -57,11 +57,12 @@ async function fetchBackend(path: string, userId?: string): Promise<unknown> {
 
 onResync(async (userId: string, ws: WebSocket) => {
   try {
-    const [ordersRes, positionsRes, tradesRes, userRes] = await Promise.all([
+    const [ordersRes, positionsRes, tradesRes, userRes, pnlCurveRes] = await Promise.all([
       fetchBackend(`/api/orders`, userId),
       fetchBackend(`/api/positions`, userId),
       fetchBackend(`/api/trades`, userId),
       fetchBackend(`/api/auth/user`, userId),
+      fetchBackend(`/api/auth/pnl-curve`, userId),
     ])
 
     const syncData = {
@@ -70,6 +71,7 @@ onResync(async (userId: string, ws: WebSocket) => {
       positions: (positionsRes as { positions?: Position[] } | null)?.positions ?? [],
       trades: (tradesRes as { trades?: Trade[] } | null)?.trades ?? [],
       user: (userRes as UserInfo | null) ?? null,
+      pnlCurve: (pnlCurveRes as { date: string; value: number }[] | null) ?? [],
     }
 
     const syncMsg = JSON.stringify({

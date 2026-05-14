@@ -72,6 +72,20 @@ export const useAuthStore = defineStore('auth', () => {
       const data = await api.get('/api/auth/user') as unknown as UserData
       if (data && data.userId) {
         applyUserData(data)
+        try {
+          const [positionsRes, pnlCurveRes] = await Promise.all([
+            api.get('/api/positions') as unknown as { positions: import('@/types').Position[] },
+            api.get('/api/auth/pnl-curve') as unknown as import('@/types').PnlCurveEntry[],
+          ])
+          if (positionsRes?.positions) {
+            usePositionStore().setPositions(positionsRes.positions)
+          }
+          if (Array.isArray(pnlCurveRes)) {
+            usePnlCurveStore().setData(pnlCurveRes)
+          }
+        } catch {
+          // positions/pnlCurve 获取失败不影响主流程，WebSocket sync 会兜底
+        }
         marketWebSocket.connect(data.userId)
         initLoading.value = false
         return true

@@ -108,6 +108,7 @@ export interface WsSyncData {
   positions: Position[]
   trades: Trade[]
   user: UserInfo | null
+  pnlCurve: PnlCurveEntry[]
 }
 
 export interface WsErrorData {
