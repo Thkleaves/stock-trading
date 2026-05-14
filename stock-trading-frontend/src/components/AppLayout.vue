@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
-import { computed, ref, onUnmounted } from 'vue'
+import { computed } from 'vue'
 import { useTheme } from '@/composables/useTheme'
+import { useSimulation } from '@/composables/useSimulation'
+import UserSwitcher from '@/components/UserSwitcher.vue'
 
 const router = useRouter()
 const route = useRoute()
 const { isDark, toggle } = useTheme()
+const { currentDate, currentTime } = useSimulation()
 
 const navItems = [
   { path: '/', label: '行情' },
@@ -13,14 +16,6 @@ const navItems = [
 ]
 
 const activePath = computed(() => route.path)
-
-const timeStr = ref('')
-function tick() {
-  timeStr.value = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-}
-tick()
-const timer = setInterval(tick, 1000)
-onUnmounted(() => clearInterval(timer))
 </script>
 
 <template>
@@ -42,7 +37,8 @@ onUnmounted(() => clearInterval(timer))
         </button>
       </div>
       <div class="nav-right">
-        <span class="nav-time">{{ timeStr }}</span>
+        <UserSwitcher />
+        <span class="nav-time">{{ currentDate }} {{ currentTime }}</span>
         <div class="theme-toggle" @click="toggle">
           <span class="theme-label">{{ isDark ? '暗' : '亮' }}</span>
           <div :class="['toggle-track', { dark: isDark }]">

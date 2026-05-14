@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useTheme } from '@/composables/useTheme'
+import UserSwitcher from '@/components/UserSwitcher.vue'
 import {
   MOCK_USER_PROFILE,
   MOCK_USER_POSITIONS,
@@ -169,6 +170,10 @@ watch(isDark, () => {
 
 <template>
   <div class="profile-view">
+    <div class="user-bar">
+      <UserSwitcher />
+    </div>
+
     <div class="asset-cards">
       <div
         v-for="card in outlineCards"
@@ -290,6 +295,13 @@ watch(isDark, () => {
   padding: 8px;
   gap: 8px;
   overflow: hidden;
+}
+
+.user-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .asset-cards {

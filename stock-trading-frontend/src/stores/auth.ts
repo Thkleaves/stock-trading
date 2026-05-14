@@ -1,8 +1,20 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { UserInfo } from '@/types'
-import { api } from '@/services/api'
 import { useSessionStore, type StoredSession } from '@/stores/sessions'
+
+function genUserId() {
+  return 'u-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8)
+}
+
+function createUserInfo(id: string, name: string): UserInfo {
+  return {
+    userId: id,
+    username: name,
+    balance: 1_000_000,
+    frozenBalance: 0,
+  }
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const sessionStore = useSessionStore()
@@ -27,7 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (!activeId) return
     const cachedUser = localStorage.getItem('user')
     if (cachedUser) {
-      const parsed = JSON.parse(cachedUser)
+      const parsed = JSON.parse(cachedUser) as UserInfo
       if (parsed.userId === activeId) {
         userId.value = activeId
         user.value = parsed
@@ -36,29 +48,25 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(username: string, password: string) {
-    const data = await api.post('/api/auth/login', { username, password }) as unknown as UserInfo
-    setAuth(data, data.userId)
-    sessionStore.add(data.userId, username, password)
-    localStorage.setItem('user', JSON.stringify(data))
+  function guestLogin(username: string, password: string) {
+    const existing = sessionStore.findByUsername(username)
+    let id: string
+    if (existing) {
+      id = existing.userId
+    } else {
+      id = genUserId()
+    }
+    const info = createUserInfo(id, username)
+    setAuth(info, id)
+    sessionStore.add(id, username, password)
+    localStorage.setItem('user', JSON.stringify(info))
   }
 
-  async function register(username: string, password: string) {
-    const data = await api.post('/api/auth/register', { username, password }) as unknown as UserInfo
-    setAuth(data, data.userId)
-    sessionStore.add(data.userId, username, password)
-    localStorage.setItem('user', JSON.stringify(data))
-  }
-
-  async function switchUser(session: StoredSession) {
-    const data = await api.post('/api/auth/login', {
-      username: session.username,
-      password: session.password,
-    }) as unknown as UserInfo
-    setAuth(data, data.userId)
-    localStorage.setItem('user', JSON.stringify(data))
-    sessionStore.setActive(data.userId)
-    return data.userId
+  function guestSwitchUser(session: StoredSession) {
+    const info = createUserInfo(session.userId, session.username)
+    setAuth(info, session.userId)
+    localStorage.setItem('user', JSON.stringify(info))
+    sessionStore.setActive(session.userId)
   }
 
   function clearCurrentUser() {
@@ -67,23 +75,13 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('user')
   }
 
-  async function logout() {
-    try {
-      await api.post('/api/auth/logout')
-    } catch {
-      // 即使后端登出失败，也清理本地状态
-    }
+  function guestLogout() {
     clearCurrentUser()
     sessionStore.clearActive()
   }
 
-  async function deleteSessionAndLogout(userIdToRemove: string) {
+  function deleteSessionAndLogout(userIdToRemove: string) {
     if (userIdToRemove === userId.value) {
-      try {
-        await api.post('/api/auth/logout')
-      } catch {
-        // 静默处理
-      }
       clearCurrentUser()
     }
     sessionStore.remove(userIdToRemove)
@@ -93,11 +91,10 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     userId,
     isLoggedIn,
-    login,
-    register,
+    guestLogin,
     setUserData,
-    switchUser,
-    logout,
+    guestSwitchUser,
+    guestLogout,
     deleteSessionAndLogout,
     clearCurrentUser,
     restoreAuth,

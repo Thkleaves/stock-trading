@@ -1,16 +1,65 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { MOCK_STOCK_LIST, MOCK_USER_ORDERS, getStockKLines } from '@/data/mock'
-import type { StockInfo, KLineData, UserOrder } from '@/data/mock'
+import { MOCK_USER_ORDERS } from '@/data/mock'
+import type { ChartMode, UserOrder } from '@/data/mock'
 import KLineChart from '@/components/KLineChart.vue'
+import { useSimulation } from '@/composables/useSimulation'
 
 const route = useRoute()
 const router = useRouter()
 
+const {
+  currentTime,
+  currentDate,
+  currentPrices,
+  stockRefs,
+  stockTicks,
+  dailyKLines,
+  weeklyKLines,
+  monthlyKLines,
+} = useSimulation()
+
 const stockCode = computed(() => route.params.code as string)
-const stockInfo = ref<StockInfo | undefined>(MOCK_STOCK_LIST.find((s) => s.code === stockCode.value))
-const klineData = ref<KLineData[]>(getStockKLines(stockCode.value))
+
+const stockInfo = computed(() => {
+  const ref = stockRefs.value[stockCode.value]
+  if (!ref) return null
+  const price = currentPrices[stockCode.value] ?? ref.open
+  const change = price - ref.open
+  const changePercent = ref.open > 0 ? (change / ref.open) * 100 : 0
+  return {
+    code: ref.code,
+    name: ref.name,
+    price,
+    change: +change.toFixed(2),
+    changePercent: +changePercent.toFixed(2),
+    volume: 0,
+    high: ref.high,
+    low: ref.low,
+    open: ref.open,
+    preClose: ref.preClose,
+  }
+})
+
+const chartMode = ref<ChartMode>('realtime')
+
+const klineData = computed(() => {
+  const code = stockCode.value
+  if (chartMode.value === 'day') return dailyKLines.value[code] || []
+  if (chartMode.value === 'week') return weeklyKLines.value[code] || []
+  if (chartMode.value === 'month') return monthlyKLines.value[code] || []
+  return dailyKLines.value[code] || []
+})
+
+const tickData = computed(() => {
+  if (chartMode.value === 'realtime') return stockTicks[stockCode.value] || []
+  return []
+})
+
+function setMode(mode: ChartMode) {
+  chartMode.value = mode
+}
 
 const stockOrders = computed<UserOrder[]>(() =>
   MOCK_USER_ORDERS.filter((o) => o.stockCode === stockCode.value)
@@ -27,14 +76,15 @@ const pendingSellCount = computed(() =>
 )
 
 const orderPrice = ref(0)
-const orderQuantity = ref(0)
+const orderQuantity = ref(100)
 
-onMounted(() => {
-  if (stockInfo.value) {
-    orderPrice.value = stockInfo.value.price
-    orderQuantity.value = 100
+let hasSetOrderPrice = false
+watch(stockInfo, (info) => {
+  if (info && !hasSetOrderPrice) {
+    orderPrice.value = info.price
+    hasSetOrderPrice = true
   }
-})
+}, { immediate: true })
 
 function formatPrice(v: number): string {
   return v.toFixed(2)
@@ -47,6 +97,42 @@ function formatChange(v: number): string {
 
 function goBack() {
   router.push('/')
+}
+
+const tradeFeedback = ref('')
+
+function handleBuy() {
+  const p = orderPrice.value
+  const q = orderQuantity.value
+  if (p <= 0) {
+    tradeFeedback.value = '请输入有效的委托价格'
+    setTimeout(() => (tradeFeedback.value = ''), 2500)
+    return
+  }
+  if (q <= 0) {
+    tradeFeedback.value = '请输入有效的委托数量'
+    setTimeout(() => (tradeFeedback.value = ''), 2500)
+    return
+  }
+  tradeFeedback.value = `买入委托已提交：${stockCode.value} ${q}手 @¥${p.toFixed(2)}`
+  setTimeout(() => (tradeFeedback.value = ''), 3000)
+}
+
+function handleSell() {
+  const p = orderPrice.value
+  const q = orderQuantity.value
+  if (p <= 0) {
+    tradeFeedback.value = '请输入有效的委托价格'
+    setTimeout(() => (tradeFeedback.value = ''), 2500)
+    return
+  }
+  if (q <= 0) {
+    tradeFeedback.value = '请输入有效的委托数量'
+    setTimeout(() => (tradeFeedback.value = ''), 2500)
+    return
+  }
+  tradeFeedback.value = `卖出委托已提交：${stockCode.value} ${q}手 @¥${p.toFixed(2)}`
+  setTimeout(() => (tradeFeedback.value = ''), 3000)
 }
 </script>
 
@@ -91,11 +177,35 @@ function goBack() {
         <div class="card-header">
           <h3>K线图</h3>
           <div class="period-selector">
-            <button class="btn btn-sm active">日K</button>
+            <button
+              :class="['btn btn-sm', { active: chartMode === 'realtime' }]"
+              @click="setMode('realtime')"
+            >实时</button>
+            <button
+              :class="['btn btn-sm', { active: chartMode === 'day' }]"
+              @click="setMode('day')"
+            >日K</button>
+            <button
+              :class="['btn btn-sm', { active: chartMode === 'week' }]"
+              @click="setMode('week')"
+            >周K</button>
+            <button
+              :class="['btn btn-sm', { active: chartMode === 'month' }]"
+              @click="setMode('month')"
+            >月K</button>
+          </div>
+          <div class="sim-clock">
+            <span class="sim-date">{{ currentDate }}</span>
+            <span class="sim-time">{{ currentTime }}</span>
           </div>
         </div>
         <div class="chart-wrap">
-          <KLineChart :data="klineData" :symbol="stockCode" height="100%" />
+          <KLineChart
+            :data="klineData"
+            :tick-data="tickData"
+            :mode="chartMode"
+            height="100%"
+          />
         </div>
       </div>
 
@@ -113,9 +223,10 @@ function goBack() {
             <input v-model.number="orderQuantity" type="number" step="100" min="100" />
           </div>
           <div class="btn-row">
-            <button class="btn btn-up flex-1">买入</button>
-            <button class="btn btn-down flex-1">卖出</button>
+            <button class="btn btn-up flex-1" @click="handleBuy">买入</button>
+            <button class="btn btn-down flex-1" @click="handleSell">卖出</button>
           </div>
+          <div v-if="tradeFeedback" class="trade-toast">{{ tradeFeedback }}</div>
         </div>
 
         <div class="orders-card card">
@@ -305,7 +416,36 @@ function goBack() {
 
 .flex-1 { flex: 1; }
 
+.trade-toast {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: var(--accent-glow);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--accent-neon);
+  font-family: var(--font-mono);
+  animation: fadeInOut 3s ease;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(-4px); }
+  10% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 .btn-sm {
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+.period-selector {
+  display: flex;
+  gap: 2px;
+}
+
+.period-selector .btn-sm {
   padding: 3px 10px;
   font-size: 11px;
 }
@@ -314,6 +454,25 @@ function goBack() {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+
+.sim-clock {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.sim-date {
+  color: var(--text-secondary);
+}
+
+.sim-time {
+  color: var(--color-up);
+  font-weight: 600;
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
 .orders-card {

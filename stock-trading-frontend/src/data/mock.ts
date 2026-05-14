@@ -20,6 +20,14 @@ export interface KLineData {
   volume: number
 }
 
+export interface TickData {
+  time: string
+  price: number
+  volume: number
+}
+
+export type ChartMode = 'realtime' | 'day' | 'week' | 'month'
+
 export interface UserOrder {
   id: string
   stockCode: string
@@ -107,6 +115,94 @@ function generateKLines(
   return result
 }
 
+function aggregateWeekly(daily: KLineData[]): KLineData[] {
+  const result: KLineData[] = []
+  const grouped: KLineData[][] = []
+  let current: KLineData[] = []
+
+  for (const d of daily) {
+    const dayOfWeek = new Date(d.date + 'T00:00:00').getDay()
+    if (dayOfWeek === 1 || current.length === 0) {
+      if (current.length > 0) grouped.push(current)
+      current = [d]
+    } else {
+      current.push(d)
+    }
+  }
+  if (current.length > 0) grouped.push(current)
+
+  for (const week of grouped) {
+    if (week.length === 0) continue
+    const lastDay = new Date(week[week.length - 1].date + 'T00:00:00')
+    if (lastDay.getDay() >= 1 && lastDay.getDay() <= 5) {
+      lastDay.setDate(lastDay.getDate() + 2)
+    }
+    result.push({
+      date: week[0].date,
+      open: week[0].open,
+      close: week[week.length - 1].close,
+      high: Math.max(...week.map((d) => d.high)),
+      low: Math.min(...week.map((d) => d.low)),
+      volume: week.reduce((s, d) => s + d.volume, 0),
+    })
+  }
+  return result
+}
+
+function aggregateMonthly(daily: KLineData[]): KLineData[] {
+  const result: KLineData[] = []
+  const grouped: Map<string, KLineData[]> = new Map()
+
+  for (const d of daily) {
+    const monthKey = d.date.slice(0, 7)
+    if (!grouped.has(monthKey)) grouped.set(monthKey, [])
+    grouped.get(monthKey)!.push(d)
+  }
+
+  for (const [, month] of grouped) {
+    if (month.length === 0) continue
+    result.push({
+      date: month[0].date,
+      open: month[0].open,
+      close: month[month.length - 1].close,
+      high: Math.max(...month.map((d) => d.high)),
+      low: Math.min(...month.map((d) => d.low)),
+      volume: month.reduce((s, d) => s + d.volume, 0),
+    })
+  }
+  return result
+}
+
+function generateTickData(basePrice: number, volatility: number, seed: number): TickData[] {
+  const rand = seedRandom(seed)
+  const result: TickData[] = []
+  let price = basePrice
+
+  const sessions = [
+    { startH: 9, startM: 30, endH: 11, endM: 30 },
+    { startH: 13, startM: 0, endH: 15, endM: 0 },
+  ]
+
+  for (const session of sessions) {
+    let h = session.startH
+    let m = session.startM
+    const endMinutes = session.endH * 60 + session.endM
+    while (h * 60 + m <= endMinutes) {
+      const change = (rand() - 0.48) * volatility * 0.4
+      price = price * (1 + change)
+      const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      result.push({
+        time: timeStr,
+        price: +price.toFixed(2),
+        volume: Math.floor(500000 + rand() * 5000000),
+      })
+      m++
+      if (m >= 60) { m = 0; h++ }
+    }
+  }
+  return result
+}
+
 const STOCK_DEFS: { code: string; name: string; basePrice: number; volatility: number; seed: number }[] = [
   { code: '000001', name: '上证指数', basePrice: 3218, volatility: 0.012, seed: 1 },
   { code: '000002', name: '万科A', basePrice: 8.32, volatility: 0.025, seed: 2 },
@@ -133,11 +229,17 @@ const STOCK_DEFS: { code: string; name: string; basePrice: number; volatility: n
 const KLINE_DAYS = 60
 
 export const MOCK_STOCKS: Record<string, KLineData[]> = {}
+export const MOCK_WEEKLY_STOCKS: Record<string, KLineData[]> = {}
+export const MOCK_MONTHLY_STOCKS: Record<string, KLineData[]> = {}
+export const MOCK_TICK_STOCKS: Record<string, TickData[]> = {}
 export const MOCK_STOCK_LIST: StockInfo[] = []
 
 STOCK_DEFS.forEach((def) => {
   const kLines = generateKLines(def.basePrice, KLINE_DAYS, def.volatility, def.seed)
   MOCK_STOCKS[def.code] = kLines
+  MOCK_WEEKLY_STOCKS[def.code] = aggregateWeekly(kLines)
+  MOCK_MONTHLY_STOCKS[def.code] = aggregateMonthly(kLines)
+  MOCK_TICK_STOCKS[def.code] = generateTickData(def.basePrice, def.volatility, def.seed)
 
   const latest = kLines[kLines.length - 1]
   const prev = kLines[kLines.length - 2]
@@ -207,4 +309,16 @@ export const MOCK_USER_POSITIONS: UserPosition[] = [
 
 export function getStockKLines(code: string): KLineData[] {
   return MOCK_STOCKS[code] || []
+}
+
+export function getStockWeeklyKLines(code: string): KLineData[] {
+  return MOCK_WEEKLY_STOCKS[code] || []
+}
+
+export function getStockMonthlyKLines(code: string): KLineData[] {
+  return MOCK_MONTHLY_STOCKS[code] || []
+}
+
+export function getStockTickData(code: string): TickData[] {
+  return MOCK_TICK_STOCKS[code] || []
 }

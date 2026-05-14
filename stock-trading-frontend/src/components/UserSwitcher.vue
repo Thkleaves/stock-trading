@@ -1,17 +1,24 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSessionStore, type StoredSession } from '@/stores/sessions'
-import { marketWebSocket } from '@/services/websocket'
-import { api } from '@/services/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const sessionStore = useSessionStore()
 
 const showDropdown = ref(false)
-const switchingUserId = ref<string | null>(null)
+const root = ref<HTMLElement | null>(null)
+
+function onDocClick(e: MouseEvent) {
+  if (root.value && !root.value.contains(e.target as Node)) {
+    showDropdown.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('click', onDocClick))
+onUnmounted(() => document.removeEventListener('click', onDocClick))
 
 const otherSessions = computed(() =>
   sessionStore.sessions.value.filter((s) => s.userId !== authStore.userId)
@@ -25,33 +32,18 @@ function closeDropdown() {
   showDropdown.value = false
 }
 
-async function handleSwitch(session: StoredSession) {
+function handleSwitch(session: StoredSession) {
   if (session.userId === authStore.userId) {
     closeDropdown()
     return
   }
-
-  switchingUserId.value = session.userId
   closeDropdown()
-
-  marketWebSocket.disconnect()
-
-  try {
-    await authStore.switchUser(session)
-    marketWebSocket.connect(session.userId)
-
-    const userRes = (await api.get('/api/auth/user')) as unknown as { balance: number; frozenBalance: number }
-    authStore.setUserData(userRes)
-  } catch {
-    marketWebSocket.connect(authStore.userId!)
-  } finally {
-    switchingUserId.value = null
-  }
+  authStore.guestSwitchUser(session)
 }
 
-async function handleDelete(session: StoredSession, event: Event) {
+function handleDelete(session: StoredSession, event: Event) {
   event.stopPropagation()
-  await authStore.deleteSessionAndLogout(session.userId)
+  authStore.deleteSessionAndLogout(session.userId)
 
   if (authStore.userId) {
     return
@@ -59,7 +51,7 @@ async function handleDelete(session: StoredSession, event: Event) {
 
   const remaining = sessionStore.sessions.value
   if (remaining.length > 0) {
-    await handleSwitch(remaining[0])
+    handleSwitch(remaining[0])
   } else {
     router.push('/login')
   }
@@ -70,20 +62,19 @@ function handleAddAccount() {
   router.push('/login?add=1')
 }
 
-async function handleLogout() {
+function handleLogout() {
   closeDropdown()
-  marketWebSocket.disconnect()
-  const userId = authStore.userId
-  await authStore.logout()
-  if (userId) {
-    sessionStore.remove(userId)
+  const uid = authStore.userId
+  authStore.guestLogout()
+  if (uid) {
+    sessionStore.remove(uid)
   }
   router.push('/login')
 }
 </script>
 
 <template>
-  <div class="user-switcher" v-click-outside="closeDropdown">
+  <div ref="root" class="user-switcher">
     <button class="switcher-trigger" @click="toggleDropdown">
       <span class="current-user">{{ authStore.user?.username ?? '未登录' }}</span>
       <span class="arrow">▾</span>
@@ -94,11 +85,9 @@ async function handleLogout() {
         v-for="session in otherSessions"
         :key="session.userId"
         class="dropdown-item"
-        :class="{ switching: switchingUserId === session.userId }"
         @click="handleSwitch(session)"
       >
         <span class="session-username">{{ session.username }}</span>
-        <span v-if="switchingUserId === session.userId" class="switching-text">切换中...</span>
         <button
           class="btn-delete"
           title="删除此登录记录"
@@ -126,16 +115,17 @@ async function handleLogout() {
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-accent);
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 12px;
+  font-family: var(--font-sans);
 }
 
 .switcher-trigger:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--bg-hover);
 }
 
 .current-user {
@@ -144,14 +134,15 @@ async function handleLogout() {
 
 .arrow {
   font-size: 10px;
-  transition: transform 0.2s;
+  color: var(--text-muted);
 }
 
 .dropdown-menu {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  background: #fff;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   min-width: 200px;
@@ -164,34 +155,23 @@ async function handleLogout() {
   align-items: center;
   padding: 10px 14px;
   cursor: pointer;
-  color: #333;
-  font-size: 14px;
+  color: var(--text-primary);
+  font-size: 13px;
   transition: background 0.15s;
 }
 
 .dropdown-item:hover {
-  background: #f5f5f5;
-}
-
-.dropdown-item.switching {
-  opacity: 0.6;
-  cursor: wait;
+  background: var(--bg-hover);
 }
 
 .session-username {
   flex: 1;
 }
 
-.switching-text {
-  font-size: 11px;
-  color: #999;
-  margin-right: 6px;
-}
-
 .btn-delete {
   background: none;
   border: none;
-  color: #999;
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 14px;
   padding: 2px 4px;
@@ -200,13 +180,13 @@ async function handleLogout() {
 }
 
 .btn-delete:hover {
-  color: #ff4d4f;
-  background: rgba(255, 77, 79, 0.1);
+  color: var(--color-up);
+  background: var(--color-up-bg);
 }
 
 .dropdown-footer {
   display: flex;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border-primary);
 }
 
 .btn-add,
@@ -216,18 +196,18 @@ async function handleLogout() {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 13px;
-  color: #666;
+  font-size: 12px;
+  color: var(--text-secondary);
   transition: background 0.15s;
 }
 
 .btn-add:hover {
-  background: #f0f0f0;
-  color: #1890ff;
+  background: var(--bg-hover);
+  color: var(--accent-neon);
 }
 
 .btn-logout:hover {
-  background: #f0f0f0;
-  color: #ff4d4f;
+  background: var(--bg-hover);
+  color: var(--color-up);
 }
 </style>

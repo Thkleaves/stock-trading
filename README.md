@@ -231,3 +231,67 @@ npm install
 npm run dev    # 开发模式（热重载）
 npm start      # 生产模式
 ```
+
+---
+
+## 八、数据生成脚本与技能
+
+### 8.1 日线数据生成器
+
+**脚本**：[`scripts/generate_stock_data.py`](file:///c:/Users/Kleaves/Desktop/Trading-system/stock-trading-backend/scripts/generate_stock_data.py)
+
+使用几何布朗运动（Box-Muller 变换）生成20支A股 + 3个大盘指数的日K线 OHLCV 数据（2025-01-02 ~ 2026-01-02，含中国节假日判断）。
+
+```bash
+cd stock-trading-backend
+python scripts/generate_stock_data.py
+```
+
+输出：
+- `data/stocks/*.csv` — 20支股票日线（date, open, close, high, low, volume, amount）
+- `data/indices/*.csv` — 3个指数日线（同上格式）
+- `data/stock_master.csv` — 股票总索引
+
+### 8.2 秒级日内数据生成器（v1）
+
+**脚本**：[`scripts/generate_intraday.py`](file:///c:/Users/Kleaves/Desktop/Trading-system/stock-trading-backend/scripts/generate_intraday.py)
+
+基于日线OHLCV锚点，使用**布朗桥模型**生成单日固定（2026-01-02）的秒级日内数据。输出字段：timestamp, price, volume, amount。
+
+### 8.3 秒级日内数据生成器（v2 增强版）· Skill
+
+**脚本**：[`scripts/generate_intraday_v2.py`](file:///c:/Users/Kleaves/Desktop/Trading-system/stock-trading-backend/scripts/generate_intraday_v2.py)
+
+**Skill 名称**：`stock-simulator`
+
+**Skill 定义**：[`.trae/skills/stock-simulator/SKILL.md`](file:///c:/Users/Kleaves/Desktop/Trading-system/.trae/skills/stock-simulator/SKILL.md)
+
+**触发方式**：对 AI 说「stock-simulator」+ 日期，例如：
+> stock-simulator 2025-06-03
+
+**功能**：从 `data/stocks/` 和 `data/indices/` 中日线数据中提取指定日期的 OHLCV 行情，使用布朗桥模型模拟该日每秒（09:30-11:30 + 13:00-15:00，共14402秒）的行情数据，生成23个CSV文件（20支股票 + 3个指数）。
+
+**输出格式**：
+
+| 字段 | 说明 |
+|------|------|
+| `timestamp` | 时间戳 `YYYY-MM-DD HH:MM:SS` |
+| `price` | 每秒价格 |
+| `change_amount` | 涨跌额（相对前收盘价） |
+| `change_pct` | 涨跌幅百分比（相对前收盘价） |
+| `volume` | 成交量（U型分布 + 泊松噪声） |
+| `amount` | 成交额（price × volume） |
+
+输出目录：`data/intraday/<YYYY-MM-DD>/`（按日期分目录存储）
+
+**手动执行**：
+```bash
+cd stock-trading-backend
+python scripts/generate_intraday_v2.py --date 2025-06-03 [--seed 42]
+```
+
+**算法核心**：
+1. 从日线CSV中提取目标日期的 open/close/high/low/volume/amount
+2. 从目标日期的前一交易日提取 close 作为前收盘价（计算涨跌额/涨跌幅的基准）
+3. 布朗桥模型生成严格收敛的价格路径（起点=开盘价，终点=收盘价，硬约束在 [low, high] 内）
+4. 成交量按 U 型曲线分配（开盘/收盘高，午间低），叠加泊松噪声避免过于均匀
