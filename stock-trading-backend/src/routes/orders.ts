@@ -12,7 +12,7 @@ import { positionsStore } from '../store/positions.js'
 import { tradesStore } from '../store/trades.js'
 import { usersStore } from '../store/users.js'
 import { matchOrder, validateBuy, validateSell } from '../engine/matcher.js'
-import { pushEvent } from '../services/sse.js'
+import { pushEvent } from '../services/eventPusher.js'
 import { eventSeqStore } from '../store/eventSeq.js'
 
 const router = Router()
@@ -66,6 +66,8 @@ router.post(
     const order = ordersStore.create({ userId, stockCode, type, price, quantity })
 
     const result = matchOrder(order)
+
+    pushEvent({ type: 'order', userId, eventSeq: Date.now(), data: order })
 
     const tradeResponses: TradeResponse[] = result.trades.map((t) =>
       toTradeResp(t, userId)

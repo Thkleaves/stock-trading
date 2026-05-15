@@ -5,7 +5,7 @@
       "username": "trader1",
       "password": "123",
       "balance": 996800,
-      "frozenBalance": 3200
+      "frozenBalance": 0
     },
     {
       "id": "f260f822-a7b6-4324-807d-c8e3ea322455",
@@ -18,7 +18,7 @@
       "id": "e9aaa2c7-e316-418d-939d-abcae6171aea",
       "username": "trader3",
       "password": "123",
-      "balance": 1000000,
+      "balance": 1006499,
       "frozenBalance": 0
     },
     {
@@ -32,7 +32,7 @@
       "id": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
       "username": "trader5",
       "password": "123",
-      "balance": 993618,
+      "balance": 990319,
       "frozenBalance": 6382
     }
   ],
@@ -44,8 +44,8 @@
       "type": "buy",
       "price": 32,
       "quantity": 100,
-      "filledQuantity": 0,
-      "status": "pending",
+      "filledQuantity": 100,
+      "status": "filled",
       "createdAt": 1778776079639
     },
     {
@@ -77,9 +77,42 @@
       "type": "buy",
       "price": 32.99,
       "quantity": 100,
+      "filledQuantity": 100,
+      "status": "filled",
+      "createdAt": 1778828982687
+    },
+    {
+      "id": "fd96c11f-f92f-4b40-9c21-de4c5f7a3a93",
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "300059",
+      "type": "sell",
+      "price": 30.83,
+      "quantity": 100,
+      "filledQuantity": 100,
+      "status": "filled",
+      "createdAt": 1778829808192
+    },
+    {
+      "id": "533cd852-fde5-4a7e-8bd8-6f6a48393dc3",
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "300059",
+      "type": "sell",
+      "price": 28,
+      "quantity": 100,
+      "filledQuantity": 100,
+      "status": "filled",
+      "createdAt": 1778829933609
+    },
+    {
+      "id": "8c963962-d81e-4405-ac42-f5f97d278518",
+      "userId": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
+      "stockCode": "300059",
+      "type": "buy",
+      "price": 32.99,
+      "quantity": 100,
       "filledQuantity": 0,
       "status": "pending",
-      "createdAt": 1778828982687
+      "createdAt": 1778830449669
     }
   ],
   "positions": [
@@ -152,8 +185,8 @@
     {
       "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
       "stockCode": "300059",
-      "quantity": 10000,
-      "avgPrice": 22
+      "quantity": 10100,
+      "avgPrice": 22.099009900990097
     },
     {
       "userId": "5a82cb20-8b2d-47c0-9b74-cf2c3c5e5855",
@@ -392,7 +425,7 @@
     {
       "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
       "stockCode": "300059",
-      "quantity": 10000,
+      "quantity": 9800,
       "avgPrice": 22
     },
     {
@@ -502,9 +535,52 @@
       "stockCode": "601012",
       "quantity": 1000,
       "avgPrice": 16
+    },
+    {
+      "userId": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
+      "stockCode": "300059",
+      "quantity": 100,
+      "avgPrice": 32.99
     }
   ],
-  "trades": [],
+  "trades": [
+    {
+      "id": "bbd09170-2acc-4e2c-bb68-b4b7b35d7675",
+      "buyOrderId": "4d0ac603-a737-4f85-9510-7becdb0fa936",
+      "sellOrderId": "fd96c11f-f92f-4b40-9c21-de4c5f7a3a93",
+      "stockCode": "300059",
+      "price": 32.99,
+      "quantity": 100,
+      "time": 1778829808197
+    },
+    {
+      "id": "b18146af-2770-401c-9dcc-733d5f718fd2",
+      "buyOrderId": "0ce7ce12-1726-4200-929e-b33e9aa2f101",
+      "sellOrderId": "fd96c11f-f92f-4b40-9c21-de4c5f7a3a93",
+      "stockCode": "300059",
+      "price": 32,
+      "quantity": 0,
+      "time": 1778829808198
+    },
+    {
+      "id": "e6bf3f90-ccf6-4565-942c-f46fe368ff3f",
+      "buyOrderId": "0ce7ce12-1726-4200-929e-b33e9aa2f101",
+      "sellOrderId": "533cd852-fde5-4a7e-8bd8-6f6a48393dc3",
+      "stockCode": "300059",
+      "price": 32,
+      "quantity": 100,
+      "time": 1778829933609
+    },
+    {
+      "id": "b8ef5d9f-4cc3-4dfa-bea9-f290b83bf9fe",
+      "buyOrderId": "85bbec74-421f-47b8-be64-51f9999db80b",
+      "sellOrderId": "533cd852-fde5-4a7e-8bd8-6f6a48393dc3",
+      "stockCode": "300059",
+      "price": 30.83,
+      "quantity": 0,
+      "time": 1778829933609
+    }
+  ],
   "pnlCurves": {
     "f260f822-a7b6-4324-807d-c8e3ea322455": [
       {
@@ -748,6 +824,14 @@
       {
         "date": "2026-01-02",
         "value": 11499000
+      },
+      {
+        "date": "2026-05-15",
+        "value": 1099
+      },
+      {
+        "date": "2026-05-15",
+        "value": 2099
       }
     ],
     "f5f1a765-9566-4984-9527-804ef0144d84": [
@@ -870,6 +954,10 @@
       {
         "date": "2026-01-02",
         "value": 172260
+      },
+      {
+        "date": "2026-05-15",
+        "value": 0
       }
     ],
     "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77": [
@@ -992,6 +1080,10 @@
       {
         "date": "2026-01-02",
         "value": 129570
+      },
+      {
+        "date": "2026-05-15",
+        "value": -1099
       }
     ]
   },

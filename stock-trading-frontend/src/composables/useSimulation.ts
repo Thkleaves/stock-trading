@@ -49,7 +49,6 @@ function pushTickMinute(ticks: TickPoint[], tick: TickPoint) {
   if (ticks.length > 0) {
     const last = ticks[ticks.length - 1]
     if (minuteKey(last.time) === minuteKey(tick.time)) {
-      ticks[ticks.length - 1] = tick
       return
     }
   }

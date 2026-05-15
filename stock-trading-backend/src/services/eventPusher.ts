@@ -13,3 +13,7 @@ export async function pushEvent(event: RealtimeEvent): Promise<void> {
     // 实时服务不可用时静默忽略，不阻塞撮合
   }
 }
+
+export async function pushEvents(events: RealtimeEvent[]): Promise<void> {
+  await Promise.all(events.map((e) => pushEvent(e)))
+}

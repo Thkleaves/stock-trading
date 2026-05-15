@@ -128,8 +128,6 @@ function realtimeTimeToFrac(timeStr: string): number {
   return 0.5
 }
 
-let lastDrawnMinute = -1
-
 function realtimeTimeToX(timeStr: string, chartW: number, padLeft: number): number {
   return padLeft + realtimeTimeToFrac(timeStr) * chartW
 }
@@ -632,12 +630,6 @@ watch(
 watch(
   () => [props.data, props.tickData] as const,
   () => {
-    if (isRealtimeMode()) {
-      const now = new Date()
-      const currentMin = now.getHours() * 60 + now.getMinutes()
-      if (currentMin === lastDrawnMinute) return
-      lastDrawnMinute = currentMin
-    }
     nextTick(() => scheduleDraw())
   },
   { deep: true }

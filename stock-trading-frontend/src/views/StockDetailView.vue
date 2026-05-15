@@ -345,6 +345,8 @@ async function handleBuy() {
       quantity: q,
     }) as unknown as { order: Order; trades: unknown[] }
 
+    orderStore.upsertOrder(result.order)
+
     const statusText = result.order.status === 'filled' ? '已成交' : result.order.status === 'partial' ? '部分成交' : '已挂单'
     tradeFeedback.value = `买入${statusText}：${stockCode.value} ${q}股 @¥${p.toFixed(2)}`
     setTimeout(() => (tradeFeedback.value = ''), 3000)
@@ -395,6 +397,8 @@ async function handleSell() {
       price: p,
       quantity: q,
     }) as unknown as { order: Order; trades: unknown[] }
+
+    orderStore.upsertOrder(result.order)
 
     const statusText = result.order.status === 'filled' ? '已成交' : result.order.status === 'partial' ? '部分成交' : '已挂单'
     tradeFeedback.value = `卖出${statusText}：${stockCode.value} ${q}股 @¥${p.toFixed(2)}`

@@ -58,21 +58,52 @@ def build_brownian_bridge(
     N = n_steps
     a = open_price
     b = close_price
+    price_range = high_price - low_price
+
+    step_vol = volatility_scale * price_range / math.sqrt(N)
 
     Z = [0.0]
     for i in range(1, N):
         pos = i / (N - 1) if N > 1 else 0
-        local_vol = volatility_scale * 1.5 if (pos < 0.1 or pos > 0.9) else volatility_scale
-        epsilon = box_muller() * local_vol * a
+        local_vol = step_vol * 1.5 if (pos < 0.1 or pos > 0.9) else step_vol
+        epsilon = box_muller() * local_vol
         Z.append(Z[-1] + epsilon)
 
     Z_N = Z[-1]
-    prices = []
+    raw_prices = []
     for i in range(N):
         frac = i / (N - 1) if N > 1 else 0
         bridge = a + (b - a) * frac + (Z[i] - frac * Z_N)
         bridge = max(low_price, min(high_price, bridge))
-        prices.append(round(bridge, 2))
+        raw_prices.append(round(bridge, 2))
+
+    prices = list(raw_prices)
+    for i in range(1, N - 1):
+        if prices[i] == prices[i - 1]:
+            direction = 1 if random.random() < 0.5 else -1
+            new_val = round(prices[i] + direction * 0.01, 2)
+            if low_price <= new_val <= high_price:
+                if i == N - 2 and new_val == prices[i + 1]:
+                    new_val = round(prices[i] - direction * 0.01, 2)
+                if low_price <= new_val <= high_price:
+                    prices[i] = new_val
+                    continue
+            new_val = round(prices[i] - direction * 0.01, 2)
+            if low_price <= new_val <= high_price:
+                if i == N - 2 and new_val == prices[i + 1]:
+                    new_val = round(prices[i] + direction * 0.02, 2)
+                if low_price <= new_val <= high_price:
+                    prices[i] = new_val
+                    continue
+            mid = round((low_price + high_price) / 2, 2)
+            prices[i] = mid if prices[i - 1] != mid else round(mid + 0.01, 2)
+
+    if prices[N - 2] == prices[N - 1]:
+        for offset in (0.01, -0.01, 0.02, -0.02, 0.03, -0.03):
+            new_val = round(prices[N - 2] + offset, 2)
+            if low_price <= new_val <= high_price and new_val != prices[N - 3]:
+                prices[N - 2] = new_val
+                break
 
     return prices
 
@@ -147,7 +178,7 @@ def main():
     trade_date = args.date
     random.seed(args.seed)
 
-    output_dir = os.path.join(DATA_DIR, "intraday", trade_date)
+    output_dir = os.path.join(DATA_DIR, "intraday")
     os.makedirs(output_dir, exist_ok=True)
 
     timestamps = generate_second_timestamps()
@@ -192,7 +223,7 @@ def main():
         total_amt = int(target_row["amount"])
 
         daily_range_pct = (high_price - low_price) / open_price
-        vol_scale = max(0.0005, min(0.02, daily_range_pct * 0.15))
+        vol_scale = max(0.05, min(0.25, daily_range_pct * 3.0))
 
         prices = build_brownian_bridge(
             open_price, close_price, high_price, low_price,
@@ -219,10 +250,13 @@ def main():
                     str(amount)
                 ])
 
+        actual_h = max(prices)
+        actual_l = min(prices)
         day_chg = (close_price - prev_close) / prev_close * 100
         intraday_chg = (close_price - open_price) / open_price * 100
         print(f"  OK {code} {name:<6s} [{asset_type}]  "
               f"前收={prev_close:>10.2f}  O={open_price:>10.2f} C={close_price:>10.2f}  "
+              f"H={high_price:.2f}(sim:{actual_h:.2f}) L={low_price:.2f}(sim:{actual_l:.2f})  "
               f"日涨跌{day_chg:+.2f}%  振幅{intraday_chg:+.2f}%")
 
         success_count += 1

@@ -1,11 +1,11 @@
-import type { Order, TradeRecord, TradeResponse } from '../types/index.js'
+import type { Order, TradeRecord, TradeResponse, RealtimeEvent } from '../types/index.js'
 import { getStockByCode } from '../types/index.js'
 import { ordersStore } from '../store/orders.js'
 import { tradesStore } from '../store/trades.js'
 import { positionsStore } from '../store/positions.js'
 import { usersStore } from '../store/users.js'
 import { pnlCurveStore } from '../store/pnlCurve.js'
-import { pushEvents } from '../services/sse.js'
+import { pushEvents } from '../services/eventPusher.js'
 
 export function validateBuy(
   price: number,
@@ -60,15 +60,8 @@ export function matchOrder(newOrder: Order): MatchResult {
   const rawBuys = ordersStore.getPendingBuyOrders(stockCode)
   const rawSells = ordersStore.getPendingSellOrders(stockCode)
 
-  const remainingBuys: Order[] =
-    newOrder.type === 'buy'
-      ? [...rawBuys, newOrder].sort((a, b) => b.price - a.price || a.createdAt - b.createdAt)
-      : [...rawBuys]
-
-  const remainingSells: Order[] =
-    newOrder.type === 'sell'
-      ? [...rawSells, newOrder].sort((a, b) => a.price - b.price || a.createdAt - b.createdAt)
-      : [...rawSells]
+  const remainingBuys: Order[] = [...rawBuys]
+  const remainingSells: Order[] = [...rawSells]
 
   const newTrades: TradeRecord[] = []
 
@@ -98,9 +91,15 @@ export function matchOrder(newOrder: Order): MatchResult {
     const buyRemaining = bestBuy.quantity - bestBuy.filledQuantity
     const sellRemaining = bestSell.quantity - bestSell.filledQuantity
     const tradeQty = Math.min(buyRemaining, sellRemaining)
+    if (tradeQty <= 0) break
 
     const tradeCost = tradePrice * tradeQty
     usersStore.consumeFrozen(bestBuy.userId, tradeCost)
+    const priceDiff = (bestBuy.price - tradePrice) * tradeQty
+    if (priceDiff > 0) {
+      buyer.balance += priceDiff
+      buyer.frozenBalance -= priceDiff
+    }
     seller.balance += tradeCost
 
     positionsStore.addPosition(bestBuy.userId, stockCode, tradeQty, tradePrice)
@@ -168,32 +167,45 @@ export function matchOrder(newOrder: Order): MatchResult {
 
     const user = usersStore.getById(userId)
     const positions = positionsStore.getByUser(userId)
+    const orders = ordersStore.getByUser(userId)
 
-    pushEvents([
-      {
-        type: 'position',
+    const events: RealtimeEvent[] = []
+
+    for (const o of orders) {
+      events.push({
+        type: 'order',
         userId,
         eventSeq: Date.now(),
-        data: positions.map((p) => ({
-          stockCode: p.stockCode,
-          stockName: getStockByCode(p.stockCode)?.name ?? p.stockCode,
-          quantity: p.quantity,
-          avgPrice: p.avgPrice,
-          currentPrice: getStockByCode(p.stockCode)?.initialPrice ?? p.avgPrice,
-        })),
+        data: o,
+      })
+    }
+
+    events.push({
+      type: 'position',
+      userId,
+      eventSeq: Date.now(),
+      data: positions.map((p) => ({
+        stockCode: p.stockCode,
+        stockName: getStockByCode(p.stockCode)?.name ?? p.stockCode,
+        quantity: p.quantity,
+        avgPrice: p.avgPrice,
+        currentPrice: getStockByCode(p.stockCode)?.initialPrice ?? p.avgPrice,
+      })),
+    })
+
+    events.push({
+      type: 'user',
+      userId,
+      eventSeq: Date.now(),
+      data: {
+        userId: user!.id,
+        username: user!.username,
+        balance: user!.balance,
+        frozenBalance: user!.frozenBalance,
       },
-      {
-        type: 'user',
-        userId,
-        eventSeq: Date.now(),
-        data: {
-          userId: user!.id,
-          username: user!.username,
-          balance: user!.balance,
-          frozenBalance: user!.frozenBalance,
-        },
-      },
-    ])
+    })
+
+    pushEvents(events)
   }
 
   return { trades: newTrades }

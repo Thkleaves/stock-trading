@@ -325,7 +325,7 @@ python scripts/generate_stock_data.py
 **触发方式**：对 AI 说「stock-simulator」+ 日期，例如：
 > stock-simulator 2025-06-03
 
-**功能**：从 `data/stocks/` 和 `data/indices/` 中日线数据中提取指定日期的 OHLCV 行情，使用布朗桥模型模拟该日每秒（09:30-11:30 + 13:00-15:00，共14402秒）的行情数据，生成23个CSV文件（20支股票 + 3个指数）。
+**功能**：从 `data/stocks/` 和 `data/indices/` 中日线数据中提取指定日期的 OHLCV 行情，使用**改进的布朗桥模型**模拟该日每秒（09:30-11:30 + 13:00-15:00，共14402秒）的行情数据，生成23个CSV文件（20支股票 + 3个指数）。指数数据直接从指数日线 OHLCV 锚点生成，不再依赖成分股合成。
 
 **输出格式**：
 
@@ -338,7 +338,7 @@ python scripts/generate_stock_data.py
 | `volume` | 成交量（U型分布 + 泊松噪声） |
 | `amount` | 成交额（price × volume） |
 
-输出目录：`data/intraday/<YYYY-MM-DD>/`（按日期分目录存储）
+输出目录：`data/intraday/`（与 v1 脚本同目录，直接生成到聚合脚本可读取的位置）
 
 **手动执行**：
 ```bash
@@ -350,9 +350,13 @@ python scripts/generate_intraday_v2.py --date 2025-06-03 [--seed 42]
 1. 从日线CSV中提取目标日期的 open/close/high/low/volume/amount
 2. 从目标日期的前一交易日提取 close 作为前收盘价（计算涨跌额/涨跌幅的基准）
 3. 布朗桥模型生成严格收敛的价格路径（起点=开盘价，终点=收盘价，硬约束在 [low, high] 内）
-4. 成交量按 U 型曲线分配（开盘/收盘高，午间低），叠加泊松噪声避免过于均匀
+4. **波动率改进**：噪声幅度与日内波幅（high-low）成正比，而非绝对价格，避免高价股波动过大
+5. **反重复机制**：确保相邻秒级价格不出现完全相同的情况（收盘价被保护不被修改）
+6. 成交量按 U 型曲线分配（开盘/收盘高，午间低），叠加高斯噪声避免过于均匀
 
-### 8.4 指数合成脚本（基于股票秒级数据）
+### 8.4 指数合成脚本（已被 v2 替代）
+
+> ⚠️ **注意**：此脚本已被 `generate_intraday_v2.py` 替代。v2 直接从指数日线 OHLCV 数据生成指数秒级数据，不再需要从成分股加权合成。该脚本保留作为参考。
 
 **脚本**：[`scripts/synthesize_indices.py`](file:///c:/Users/Kleaves/Desktop/Trading-system/stock-trading-backend/scripts/synthesize_indices.py)
 
