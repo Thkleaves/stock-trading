@@ -18,22 +18,22 @@
       "id": "e9aaa2c7-e316-418d-939d-abcae6171aea",
       "username": "trader3",
       "password": "123",
-      "balance": 1006499,
+      "balance": 1106277.8399999999,
       "frozenBalance": 0
     },
     {
       "id": "f5f1a765-9566-4984-9527-804ef0144d84",
       "username": "trader4",
       "password": "123",
-      "balance": 996917,
-      "frozenBalance": 3083
+      "balance": 931917,
+      "frozenBalance": 1603.1600000000035
     },
     {
       "id": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
       "username": "trader5",
       "password": "123",
-      "balance": 990319,
-      "frozenBalance": 6382
+      "balance": 960319,
+      "frozenBalance": 3083
     }
   ],
   "orders": [
@@ -55,8 +55,8 @@
       "type": "buy",
       "price": 30.83,
       "quantity": 100,
-      "filledQuantity": 0,
-      "status": "pending",
+      "filledQuantity": 48,
+      "status": "partial",
       "createdAt": 1778777480003
     },
     {
@@ -110,9 +110,86 @@
       "type": "buy",
       "price": 32.99,
       "quantity": 100,
-      "filledQuantity": 0,
-      "status": "pending",
+      "filledQuantity": 100,
+      "status": "filled",
       "createdAt": 1778830449669
+    },
+    {
+      "id": "fb76dfbb-9eb3-4315-ab6e-10b51ecc1e2b",
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "300059",
+      "type": "sell",
+      "price": 15,
+      "quantity": 100,
+      "filledQuantity": 100,
+      "status": "filled",
+      "createdAt": 1778832435149
+    },
+    {
+      "id": "63312253-e151-418a-890b-3db8272cf2e5",
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "300059",
+      "type": "sell",
+      "price": 15,
+      "quantity": 48,
+      "filledQuantity": 48,
+      "status": "filled",
+      "createdAt": 1778832438608
+    },
+    {
+      "id": "93025c49-9f16-4aa1-b835-316560d0f2b3",
+      "userId": "f5f1a765-9566-4984-9527-804ef0144d84",
+      "stockCode": "300750",
+      "type": "buy",
+      "price": 300,
+      "quantity": 100,
+      "filledQuantity": 100,
+      "status": "filled",
+      "createdAt": 1778832657760
+    },
+    {
+      "id": "17d31d9b-0028-4ab5-91cf-bd6447b5e856",
+      "userId": "f5f1a765-9566-4984-9527-804ef0144d84",
+      "stockCode": "300750",
+      "type": "buy",
+      "price": 350,
+      "quantity": 100,
+      "filledQuantity": 100,
+      "status": "filled",
+      "createdAt": 1778832671047
+    },
+    {
+      "id": "7e41dcb8-211d-417c-b770-1cfdaa3a9f99",
+      "userId": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
+      "stockCode": "300750",
+      "type": "buy",
+      "price": 300,
+      "quantity": 100,
+      "filledQuantity": 100,
+      "status": "filled",
+      "createdAt": 1778832678507
+    },
+    {
+      "id": "0588b43d-0aed-4de3-a8c4-aae80811aa14",
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "300750",
+      "type": "sell",
+      "price": 290,
+      "quantity": 150,
+      "filledQuantity": 150,
+      "status": "filled",
+      "createdAt": 1778832688064
+    },
+    {
+      "id": "2793615b-1e1b-4d08-a974-88c5b0736fdc",
+      "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
+      "stockCode": "300750",
+      "type": "sell",
+      "price": 290,
+      "quantity": 150,
+      "filledQuantity": 150,
+      "status": "filled",
+      "createdAt": 1778832699412
     }
   ],
   "positions": [
@@ -371,7 +448,7 @@
     {
       "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
       "stockCode": "300750",
-      "quantity": 10000,
+      "quantity": 9700,
       "avgPrice": 250
     },
     {
@@ -425,7 +502,7 @@
     {
       "userId": "e9aaa2c7-e316-418d-939d-abcae6171aea",
       "stockCode": "300059",
-      "quantity": 9800,
+      "quantity": 9652,
       "avgPrice": 22
     },
     {
@@ -503,8 +580,8 @@
     {
       "userId": "f5f1a765-9566-4984-9527-804ef0144d84",
       "stockCode": "300750",
-      "quantity": 1000,
-      "avgPrice": 250
+      "quantity": 1200,
+      "avgPrice": 262.5
     },
     {
       "userId": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
@@ -539,8 +616,20 @@
     {
       "userId": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
       "stockCode": "300059",
-      "quantity": 100,
+      "quantity": 200,
       "avgPrice": 32.99
+    },
+    {
+      "userId": "f5f1a765-9566-4984-9527-804ef0144d84",
+      "stockCode": "300059",
+      "quantity": 48,
+      "avgPrice": 30.83
+    },
+    {
+      "userId": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
+      "stockCode": "300750",
+      "quantity": 100,
+      "avgPrice": 300
     }
   ],
   "trades": [
@@ -579,6 +668,60 @@
       "price": 30.83,
       "quantity": 0,
       "time": 1778829933609
+    },
+    {
+      "id": "30a1c58c-504e-4ae7-9d6c-4b4b96740670",
+      "buyOrderId": "8c963962-d81e-4405-ac42-f5f97d278518",
+      "sellOrderId": "fb76dfbb-9eb3-4315-ab6e-10b51ecc1e2b",
+      "stockCode": "300059",
+      "price": 32.99,
+      "quantity": 100,
+      "time": 1778832435149
+    },
+    {
+      "id": "d7da8a75-e95d-465f-80b6-4a46beb0fd11",
+      "buyOrderId": "85bbec74-421f-47b8-be64-51f9999db80b",
+      "sellOrderId": "63312253-e151-418a-890b-3db8272cf2e5",
+      "stockCode": "300059",
+      "price": 30.83,
+      "quantity": 48,
+      "time": 1778832438608
+    },
+    {
+      "id": "bd639a0b-04d0-46e6-8bee-7c3ef4421e4d",
+      "buyOrderId": "17d31d9b-0028-4ab5-91cf-bd6447b5e856",
+      "sellOrderId": "0588b43d-0aed-4de3-a8c4-aae80811aa14",
+      "stockCode": "300750",
+      "price": 350,
+      "quantity": 100,
+      "time": 1778832688064
+    },
+    {
+      "id": "e066abaa-0f2b-4b61-bce6-cae62549526f",
+      "buyOrderId": "93025c49-9f16-4aa1-b835-316560d0f2b3",
+      "sellOrderId": "0588b43d-0aed-4de3-a8c4-aae80811aa14",
+      "stockCode": "300750",
+      "price": 300,
+      "quantity": 50,
+      "time": 1778832688065
+    },
+    {
+      "id": "bbfbf6ca-9967-4798-9eb6-e2808918f34f",
+      "buyOrderId": "93025c49-9f16-4aa1-b835-316560d0f2b3",
+      "sellOrderId": "2793615b-1e1b-4d08-a974-88c5b0736fdc",
+      "stockCode": "300750",
+      "price": 300,
+      "quantity": 50,
+      "time": 1778832699412
+    },
+    {
+      "id": "a0ba7b0c-411f-4cc6-8706-a0164a80f0ce",
+      "buyOrderId": "7e41dcb8-211d-417c-b770-1cfdaa3a9f99",
+      "sellOrderId": "2793615b-1e1b-4d08-a974-88c5b0736fdc",
+      "stockCode": "300750",
+      "price": 300,
+      "quantity": 100,
+      "time": 1778832699412
     }
   ],
   "pnlCurves": {
@@ -832,6 +975,22 @@
       {
         "date": "2026-05-15",
         "value": 2099
+      },
+      {
+        "date": "2026-05-15",
+        "value": 3198
+      },
+      {
+        "date": "2026-05-15",
+        "value": 3621.84
+      },
+      {
+        "date": "2026-05-15",
+        "value": 16121.84
+      },
+      {
+        "date": "2026-05-15",
+        "value": 23621.84
       }
     ],
     "f5f1a765-9566-4984-9527-804ef0144d84": [
@@ -958,6 +1117,18 @@
       {
         "date": "2026-05-15",
         "value": 0
+      },
+      {
+        "date": "2026-05-15",
+        "value": -423.84
+      },
+      {
+        "date": "2026-05-15",
+        "value": -12923.84
+      },
+      {
+        "date": "2026-05-15",
+        "value": -15423.84
       }
     ],
     "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77": [
@@ -1084,6 +1255,14 @@
       {
         "date": "2026-05-15",
         "value": -1099
+      },
+      {
+        "date": "2026-05-15",
+        "value": -2198
+      },
+      {
+        "date": "2026-05-15",
+        "value": -7198
       }
     ]
   },

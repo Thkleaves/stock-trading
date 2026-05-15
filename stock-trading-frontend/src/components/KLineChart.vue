@@ -224,11 +224,16 @@ function draw() {
 
   const minPrice = Math.min(...prices)
   const maxPrice = Math.max(...prices)
-  const absRange = maxPrice - minPrice || 1
-  const pricePad = absRange * 0.08
-  const yMin = minPrice - pricePad
-  const yMax = maxPrice + pricePad
-  const yRange = yMax - yMin
+
+  const baseLow = openPrice > 0 ? openPrice * 0.98 : minPrice
+  const baseHigh = openPrice > 0 ? openPrice * 1.02 : maxPrice
+
+  let yMin = Math.min(baseLow, minPrice)
+  let yMax = Math.max(baseHigh, maxPrice)
+  const yRange = yMax - yMin || 1
+  const pricePad = yRange * 0.08
+  yMin -= pricePad
+  yMax += pricePad
 
   const isCandle = isCandleMode()
   const volGap = isCandle ? 8 : 0
