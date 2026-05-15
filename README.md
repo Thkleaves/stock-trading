@@ -9,6 +9,7 @@
 ```
 stock-trading/
 ├── README.md                      ← 本文件（整体规划）
+├── Prompt记录.md                   ← 关键 Prompt 记录（交付物清单）
 ├── start.bat                      ← 一键环境检查 & 启动脚本
 ├── docker-compose.yml             ← 一键启动三服务
 ├── stock-trading-frontend/        ← 子项目 1：前端
@@ -208,16 +209,9 @@ cd stock-trading-frontend && npm install && npm run dev
 
 ---
 
-## 六、Prompt 记录模板
+## 六、关键 Prompt 记录
 
-```
-### Prompt X：场景描述
-- **场景**：当时在做什么
-- **问题**：遇到的具体问题
-- **Prompt**：发给 AI 的原始 prompt
-- **AI 回复**：AI 给了什么
-- **我的调整**：审查后发现什么问题，做了什么修改
-```
+> 详见 [Prompt记录.md](./Prompt记录.md)，记录项目开发过程中与 AI 协作的 5 个关键 Prompt 及决策过程。涵盖：行情数据源切换、资金冻结机制、WebSocket 三重保障、盈亏曲线生成、股票列表动态加载。
 
 ---
 
