@@ -65,8 +65,8 @@ function themeColors(): ThemeColors {
         text: '#8b949e',
         up: '#f85149',
         down: '#3fb950',
-        volUp: 'rgba(26,115,232,0.12)',
-        volDown: 'rgba(26,115,232,0.06)',
+        volUp: 'rgba(248,81,73,0.28)',
+        volDown: 'rgba(63,185,80,0.28)',
         tooltipBg: '#e6edf3',
         tooltipText: '#0d1117',
         zeroLine: '#30363d',
@@ -77,8 +77,8 @@ function themeColors(): ThemeColors {
         text: '#5f6368',
         up: '#d93025',
         down: '#188038',
-        volUp: 'rgba(26,115,232,0.15)',
-        volDown: 'rgba(26,115,232,0.08)',
+        volUp: 'rgba(217,48,37,0.28)',
+        volDown: 'rgba(24,128,56,0.28)',
         tooltipBg: '#202124',
         tooltipText: '#ffffff',
         zeroLine: '#dadce0',
@@ -97,6 +97,12 @@ function calcMA(data: number[], period: number): (number | null)[] {
     }
   }
   return result
+}
+
+function formatVolume(vol: number): string {
+  if (vol >= 1e8) return (vol / 1e8).toFixed(2) + '亿'
+  if (vol >= 1e4) return (vol / 1e4).toFixed(2) + '万'
+  return Math.round(vol).toString()
 }
 
 function isRealtimeMode(): boolean {
@@ -121,6 +127,8 @@ function realtimeTimeToFrac(timeStr: string): number {
   if (sec >= A13) return 0.5 + ((sec - A13) / (A15 - A13)) * 0.5
   return 0.5
 }
+
+let lastDrawnMinute = -1
 
 function realtimeTimeToX(timeStr: string, chartW: number, padLeft: number): number {
   return padLeft + realtimeTimeToFrac(timeStr) * chartW
@@ -224,7 +232,11 @@ function draw() {
   const yMax = maxPrice + pricePad
   const yRange = yMax - yMin
 
-  const klineH = chartH
+  const isCandle = isCandleMode()
+  const volGap = isCandle ? 8 : 0
+  const klineH = isCandle ? chartH * 0.72 : chartH
+  const volTop = pad.top + klineH + volGap
+  const volH = isCandle ? chartH - klineH - volGap : 0
   const toY = (v: number) => pad.top + ((yMax - v) / yRange) * klineH
   const openY = toY(openPrice)
 
@@ -274,11 +286,44 @@ function draw() {
     }
 
     if (pts.length > 0) {
-      ctx.strokeStyle = '#1a73e8'
-      ctx.lineWidth = 1.2
+      const firstPrice = tickSlice[0]?.price ?? 0
+      const lastPrice = tickSlice[tickSlice.length - 1]?.price ?? firstPrice
+      const isUp = lastPrice >= firstPrice
+      const lineColor = isUp ? tc.up : tc.down
+      const bottomY = pad.top + klineH
+
+      const r = parseInt(lineColor.slice(1, 3), 16)
+      const g = parseInt(lineColor.slice(3, 5), 16)
+      const b = parseInt(lineColor.slice(5, 7), 16)
+
+      const areaGrad = ctx.createLinearGradient(0, pad.top, 0, bottomY)
+      areaGrad.addColorStop(0, `rgba(${r},${g},${b},0.22)`)
+      areaGrad.addColorStop(0.55, `rgba(${r},${g},${b},0.05)`)
+      areaGrad.addColorStop(1, `rgba(${r},${g},${b},0.0)`)
+
+      ctx.fillStyle = areaGrad
+      ctx.beginPath()
+      ctx.moveTo(pts[0].x, bottomY)
+      for (let i = 0; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
+      ctx.lineTo(pts[pts.length - 1].x, bottomY)
+      ctx.closePath()
+      ctx.fill()
+
+      ctx.strokeStyle = lineColor
+      ctx.lineWidth = 1.5
+      ctx.lineJoin = 'round'
       ctx.beginPath()
       ctx.moveTo(pts[0].x, pts[0].y)
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
+      ctx.stroke()
+
+      const lastPt = pts[pts.length - 1]
+      ctx.fillStyle = lineColor
+      ctx.beginPath()
+      ctx.arc(lastPt.x, lastPt.y, 3, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = tc.bg
+      ctx.lineWidth = 1.5
       ctx.stroke()
     }
 
@@ -359,6 +404,43 @@ function draw() {
     for (let i = 0; i < kSlice.length; i += labelStep) {
       ctx.fillText(kSlice[i].date.slice(5), pad.left + i * step + step / 2, h - 4)
     }
+
+    ctx.strokeStyle = tc.grid
+    ctx.lineWidth = 0.5
+    ctx.beginPath()
+    ctx.moveTo(pad.left, volTop - volGap / 2)
+    ctx.lineTo(pad.left + chartW, volTop - volGap / 2)
+    ctx.stroke()
+
+    const volumes = kSlice.map((d) => d.volume)
+    const maxVol = Math.max(...volumes, 1)
+
+    const volGridRows = 2
+    for (let i = 0; i <= volGridRows; i++) {
+      const y = volTop + (volH / volGridRows) * i
+      ctx.beginPath()
+      ctx.moveTo(pad.left, y)
+      ctx.lineTo(pad.left + chartW, y)
+      ctx.stroke()
+
+      const volVal = maxVol - (maxVol / volGridRows) * i
+      ctx.fillStyle = tc.text
+      ctx.font = '8px -apple-system, sans-serif'
+      ctx.textAlign = 'right'
+      ctx.fillText(formatVolume(volVal), pad.left - 4, y + 3)
+    }
+
+    for (let i = 0; i < kSlice.length; i++) {
+      const d = kSlice[i]
+      const x = pad.left + i * step + step / 2
+      const isUp = d.close >= d.open
+
+      const barH = (d.volume / maxVol) * volH
+      const barY = volTop + volH - barH
+
+      ctx.fillStyle = isUp ? tc.volUp : tc.volDown
+      ctx.fillRect(x - candleW / 2, barY, candleW, Math.max(1, barH))
+    }
   }
 
   if (crosshair.visible) {
@@ -380,7 +462,7 @@ function draw() {
     ctx.setLineDash([])
 
     const tooltipW = 130
-    const tooltipH = isCandleMode() ? 112 : 40
+    const tooltipH = isCandleMode() ? 128 : 40
     let tx = cx + 14
     let ty = cy - tooltipH - 10
     if (tx + tooltipW > w - 4) tx = cx - tooltipW - 14
@@ -408,6 +490,7 @@ function draw() {
         rowY += 16; ctx.fillText(`高: ${kd.high}`, tx + 6, rowY)
         rowY += 16; ctx.fillText(`低: ${kd.low}`, tx + 6, rowY)
         rowY += 16; ctx.fillText(`收: ${kd.close}`, tx + 6, rowY)
+        rowY += 16; ctx.fillText(`量: ${formatVolume(kd.volume)}`, tx + 6, rowY)
       }
     }
   }
@@ -549,6 +632,12 @@ watch(
 watch(
   () => [props.data, props.tickData] as const,
   () => {
+    if (isRealtimeMode()) {
+      const now = new Date()
+      const currentMin = now.getHours() * 60 + now.getMinutes()
+      if (currentMin === lastDrawnMinute) return
+      lastDrawnMinute = currentMin
+    }
     nextTick(() => scheduleDraw())
   },
   { deep: true }

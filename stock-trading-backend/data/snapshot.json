@@ -32,8 +32,8 @@
       "id": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
       "username": "trader5",
       "password": "123",
-      "balance": 1000000,
-      "frozenBalance": 0
+      "balance": 993618,
+      "frozenBalance": 6382
     }
   ],
   "orders": [
@@ -58,6 +58,28 @@
       "filledQuantity": 0,
       "status": "pending",
       "createdAt": 1778777480003
+    },
+    {
+      "id": "e025b7b9-10cc-44ba-ba78-c3d0f2f3ec16",
+      "userId": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
+      "stockCode": "300059",
+      "type": "buy",
+      "price": 30.83,
+      "quantity": 100,
+      "filledQuantity": 0,
+      "status": "pending",
+      "createdAt": 1778827149777
+    },
+    {
+      "id": "4d0ac603-a737-4f85-9510-7becdb0fa936",
+      "userId": "cf2dcb1c-00d2-47ba-b5c1-7b8e430dcf77",
+      "stockCode": "300059",
+      "type": "buy",
+      "price": 32.99,
+      "quantity": 100,
+      "filledQuantity": 0,
+      "status": "pending",
+      "createdAt": 1778828982687
     }
   ],
   "positions": [

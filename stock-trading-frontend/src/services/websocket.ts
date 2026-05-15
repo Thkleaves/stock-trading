@@ -5,7 +5,7 @@ import { useTradeStore } from '@/stores/trade'
 import { useAuthStore } from '@/stores/auth'
 import { usePnlCurveStore } from '@/stores/pnlCurve'
 import { api } from '@/services/api'
-import { setKLines, setStockRefs, setDailyOhlc, prependIndexTicks, applyMarketUpdate } from '@/composables/useSimulation'
+import { setKLines, setStockRefs, setDailyOhlc, prependIndexTicks, prependStockTicks, applyMarketUpdate } from '@/composables/useSimulation'
 import type { WsMessage, WsQuoteData, WsQuotesData, WsOrderData, WsPositionData, WsTradeData, WsUserData, WsSyncData, WsErrorData, WsIndexHistoryData, Trade, Order, Position, PnlCurveEntry } from '@/types'
 
 const WS_URL = 'ws://localhost:3001'
@@ -174,13 +174,16 @@ class MarketWebSocket {
         break
       }
       case 'indexHistory': {
-        const tickData = msg.data as WsIndexHistoryData
-        if (tickData && tickData.length > 0) {
-          prependIndexTicks(tickData.map((t) => ({
-            time: t.time,
-            price: t.price,
-            volume: 0,
-          })))
+        const historyMap = msg.data as WsIndexHistoryData
+        if (!historyMap) break
+        for (const [code, tickArr] of Object.entries(historyMap)) {
+          if (!tickArr || tickArr.length === 0) continue
+          const ticks = tickArr.map((t) => ({ time: t.time, price: t.price, volume: 0 }))
+          if (code === '000001' || code === '399001' || code === '399006') {
+            prependIndexTicks(code, ticks)
+          } else {
+            prependStockTicks(code, ticks)
+          }
         }
         break
       }

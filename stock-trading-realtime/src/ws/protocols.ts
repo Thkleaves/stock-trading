@@ -8,7 +8,6 @@ export interface WsServerMessage {
   data: unknown
   eventSeq?: number
   timestamp?: string
-  code?: string
 }
 
 export interface WsClientMessage {
@@ -84,9 +83,8 @@ export interface ErrorMessage {
 
 export interface IndexHistoryMessage {
   type: 'indexHistory'
-  code: string
-  data: {
+  data: Record<string, {
     time: string
     price: number
-  }[]
+  }[]>
 }

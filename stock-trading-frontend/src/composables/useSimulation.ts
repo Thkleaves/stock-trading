@@ -38,7 +38,31 @@ const dailyKLines = ref<Record<string, KLineRow[]>>({})
 const weeklyKLines = ref<Record<string, KLineRow[]>>({})
 const monthlyKLines = ref<Record<string, KLineRow[]>>({})
 
-const indexTicks = ref<TickPoint[]>([])
+const indexTicks = reactive<Record<string, TickPoint[]>>({})
+
+function minuteKey(timeStr: string): string {
+  const idx = timeStr.lastIndexOf(':')
+  return idx >= 0 ? timeStr.slice(0, idx) : timeStr
+}
+
+function pushTickMinute(ticks: TickPoint[], tick: TickPoint) {
+  if (ticks.length > 0) {
+    const last = ticks[ticks.length - 1]
+    if (minuteKey(last.time) === minuteKey(tick.time)) {
+      ticks[ticks.length - 1] = tick
+      return
+    }
+  }
+  ticks.push(tick)
+}
+
+function downsamplePerMinute(ticks: TickPoint[]): TickPoint[] {
+  const result: TickPoint[] = []
+  for (const t of ticks) {
+    pushTickMinute(result, t)
+  }
+  return result
+}
 
 export function applyMarketUpdate() {
   const marketStore = useMarketStore()
@@ -73,13 +97,14 @@ export function applyMarketUpdate() {
     if (prevPrice !== undefined && prevPrice !== quote.price) {
       if (ref.type === 'stock') {
         if (!stockTicks[code]) stockTicks[code] = []
-        stockTicks[code].push({
+        pushTickMinute(stockTicks[code], {
           time: currentTime.value,
           price: quote.price,
           volume: 0,
         })
       } else {
-        indexTicks.value.push({
+        if (!indexTicks[code]) indexTicks[code] = []
+        pushTickMinute(indexTicks[code], {
           time: currentTime.value,
           price: quote.price,
           volume: 0,
@@ -123,8 +148,16 @@ export function setDailyOhlc(_dailyOhlc: Record<string, unknown>) {
   // 占位，后续若需缓存日内OHLC可在此扩展
 }
 
-export function prependIndexTicks(ticks: TickPoint[]) {
-  indexTicks.value = [...ticks, ...indexTicks.value]
+export function prependIndexTicks(code: string, ticks: TickPoint[]) {
+  if (!indexTicks[code]) indexTicks[code] = []
+  const downsampled = downsamplePerMinute(ticks)
+  indexTicks[code] = [...downsampled, ...indexTicks[code]]
+}
+
+export function prependStockTicks(code: string, ticks: TickPoint[]) {
+  if (!stockTicks[code]) stockTicks[code] = []
+  const downsampled = downsamplePerMinute(ticks)
+  stockTicks[code] = [...downsampled, ...stockTicks[code]]
 }
 
 export function useSimulation() {

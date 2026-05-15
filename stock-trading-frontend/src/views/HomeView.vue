@@ -118,7 +118,7 @@ function goStockDetail(code: string) {
           <div class="index-chart-inner">
             <KLineChart
               :data="indexData"
-              :tick-data="indexMode === 'realtime' ? indexTicks : []"
+              :tick-data="indexMode === 'realtime' ? (indexTicks['000001'] || []) : []"
               :mode="indexMode"
               height="100%"
             />

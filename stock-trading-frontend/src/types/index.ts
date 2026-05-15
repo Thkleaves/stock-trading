@@ -70,7 +70,6 @@ export interface WsMessage {
   data: unknown
   eventSeq?: number
   timestamp?: string
-  code?: string
 }
 
 export interface WsQuoteData {
@@ -125,7 +124,7 @@ export interface WsDailyOhlcItem {
   preClose: number
 }
 
-export type WsIndexHistoryData = { time: string; price: number }[]
+export type WsIndexHistoryData = Record<string, { time: string; price: number }[]>
 
 export interface WsSyncData {
   quotes: Record<string, StockQuote>

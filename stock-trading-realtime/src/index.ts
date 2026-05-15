@@ -69,12 +69,17 @@ onSubscribe((userId: string, ws: WebSocket) => {
     ws.send(quotesMsg)
   }
 
-  const indexTicks = getHistoricalTicks('000001')
-  if (indexTicks.length > 0 && ws.readyState === WebSocket.OPEN) {
+  const historyData: Record<string, { time: string; price: number }[]> = {}
+  for (const stock of STOCKS) {
+    const ticks = getHistoricalTicks(stock.code)
+    if (ticks.length > 0) {
+      historyData[stock.code] = ticks
+    }
+  }
+  if (Object.keys(historyData).length > 0 && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({
       type: 'indexHistory',
-      code: '000001',
-      data: indexTicks,
+      data: historyData,
     }))
   }
 })
