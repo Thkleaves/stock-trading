@@ -12,8 +12,7 @@ Vue 3 + TypeScript + Vite 构建的股票模拟交易系统前端，采用极简
 | 状态 | Pinia | 响应式 store |
 | 路由 | Vue Router 4 | 动态路由 |
 | HTTP | Axios | REST API 代理 |
-| 实时 | WebSocket | 断线重连 |
-| K 线 | HQChart + jQuery | 专业金融图表 |
+| 实时 | WebSocket | 断线重连、行情全量推送 |
 
 ## 项目结构
 
@@ -34,8 +33,8 @@ src/
 │   └── websocket.ts           # WebSocket 客户端（断线重连）
 ├── types/
 │   └── index.ts               # 共享 TypeScript 类型
-├── data/
-│   └── mock.ts                # Mock 数据（20 支 A 股 + K 线 + 用户资产）
+├── composables/
+│   └── useSimulation.ts       # WebSocket 行情驱动（stockRefs / 分时 tick / K 线）
 ├── views/                     # 页面组件
 │   ├── HomeView.vue           # 首页：上证 K 线 + 股票涨跌列表
 │   ├── StockDetailView.vue    # 个股详情：K 线 + 挂单信息 + 快速交易
@@ -45,14 +44,13 @@ src/
 │   └── KLineChart.vue         # HQChart K线图封装
 ├── assets/
 │   └── main.css               # 全局暗色主题（CSS 变量 + 红绿色阶）
-└── hqchart.d.ts               # HQChart / jQuery 全局类型声明
 ```
 
 ## 路由设计
 
 | 路径 | 页面 | 说明 |
 |---|---|---|
-| `/` | HomeView | 上证指数 K 线 + 20 支持股实时涨跌 |
+| `/` | HomeView | 上证指数 K 线 + 20 只股票实时涨跌（WebSocket 驱动） |
 | `/stock/:code` | StockDetailView | 个股 K 线 + 挂单明细 + 快速买卖 |
 | `/profile` | ProfileView | 总资产 / 盈亏曲线 / 持仓 / 交易记录 |
 
@@ -60,9 +58,8 @@ src/
 
 ### 行情页 `/`
 
-- **左栏（3/5）**：上证指数 HQChart K 线图（含 MA / VOL / MACD 指标）+ 实时价格 / 涨跌幅 / OHL
-- **右栏（2/5）**：20 支 A 股列表，每隔 2 秒随机游走模拟行情波动
-  - 顶部统计：上涨 / 平盘 / 下跌 家数
+- **左栏（3/5）**：上证指数 Canvas K 线图（支持实时 / 日K / 周K / 月K 切换）+ 实时价格 / 涨跌幅
+- **右栏（2/5）**：20 只 A 股列表，WebSocket 实时推送行情更新
   - 双击任意行 → 跳转个股详情
   - 红绿颜色区分涨跌
 
@@ -96,19 +93,28 @@ src/
 ## 数据流
 
 ```
-App.vue
-└── AppLayout (导航栏)
-    └── <RouterView>
-        ├── HomeView           → mock.ts（K 线 + 行情）
-        ├── StockDetailView    → mock.ts（K 线 + 挂单）
-        └── ProfileView        → mock.ts（资产 + 持仓 + 交易）
+WebSocket (:3001) ─→ marketWebSocket.connect()
+  ├─ sync 消息 ─→ 全量行情 quotes ─→ useMarketStore  ─→ useSimulation.tickFromWebSocket()
+  ├─ quote 消息 ─→  单只行情更新  ─→ useMarketStore  ─→ stockRefs / currentPrices / stockTicks
+  ├─ order 消息 ─→ 委托变更      ─→ useOrderStore
+  ├─ position 消息 ─→ 持仓变更   ─→ usePositionStore
+  └─ trade 消息 ─→ 成交推送     ─→ useTradeStore
+
+REST API (:3000) ─→ api.ts (Axios)
+  ├─ /api/auth/* ─→ useAuthStore
+  ├─ /api/orders ─→ 下单
+  └─ /api/trades / positions ─→ 轮询兜底
+
+AppLayout (导航栏)
+└── <RouterView>
+    ├── HomeView          ← useSimulation (stockRefs / indexTicks / K 线)
+    ├── StockDetailView   ← useSimulation (stockRefs / stockTicks / K 线) + Order/Position/Auth Store
+    └── ProfileView       ← useSimulation (stockRefs / currentPrices) + Position/Trade/PnL/Auth Store
 ```
 
-**Mock 模式**（当前）：所有数据由 `src/data/mock.ts` 提供，无需后端即可全功能预览。20 支持股模拟随机行情波动。
+所有行情数据全权由后端 WebSocket 推送，前端不主动请求 CSV 或历史数据文件。
 
-**完整模式**（对接后端后）：WebSocket 实时驱动 market store → 各组件响应式更新。用户下单 → REST API → 撮合 → WebSocket 推送。
-
-## 依赖服务（完整模式）
+## 依赖服务
 
 | 服务 | 端口 | 说明 |
 |---|---|---|
@@ -124,7 +130,7 @@ npm run build      # 类型检查 + 生产构建
 npm run preview    # 预览构建产物
 ```
 
-**无需后端即可运行**：`npm run dev` 后直接访问 `localhost:5173`，所有页面均使用内置 Mock 数据渲染。
+前端需配合后端服务才能获取行情数据，WebSocket 行情推送端口 `:3001`，REST API 端口 `:3000`。
 
 ## Docker
 

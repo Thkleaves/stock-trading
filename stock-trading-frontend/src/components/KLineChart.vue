@@ -174,11 +174,6 @@ function getPrices(slice: Array<KLineData | TickData>): number[] {
   return (slice as KLineData[]).flatMap((d) => [d.high, d.low])
 }
 
-function getVolumes(slice: Array<KLineData | TickData>): number[] {
-  if (isRealtimeMode()) return (slice as TickData[]).map((d) => d.volume)
-  return (slice as KLineData[]).map((d) => d.volume)
-}
-
 function draw() {
   const canvas = canvasRef.value
   if (!canvas) return
@@ -219,7 +214,6 @@ function draw() {
 
   const openPrice = getOpenBaseline(slice)
   const prices = getPrices(slice)
-  const volumes = getVolumes(slice)
 
   const minPrice = Math.min(...prices)
   const maxPrice = Math.max(...prices)
@@ -229,9 +223,7 @@ function draw() {
   const yMax = maxPrice + pricePad
   const yRange = yMax - yMin
 
-  const klineH = chartH * 0.70
-  const volH = chartH * 0.30
-  const volTop = pad.top + klineH + 2
+  const klineH = chartH
   const toY = (v: number) => pad.top + ((yMax - v) / yRange) * klineH
   const openY = toY(openPrice)
 
@@ -272,25 +264,6 @@ function draw() {
   ctx.stroke()
   ctx.setLineDash([])
 
-  ctx.strokeStyle = tc.grid
-  ctx.lineWidth = 0.5
-  ctx.beginPath()
-  ctx.moveTo(pad.left, volTop)
-  ctx.lineTo(pad.left + chartW, volTop)
-  ctx.stroke()
-
-  const maxVol = Math.max(...volumes) || 1
-  const gridVolRows = 2
-  for (let i = 1; i <= gridVolRows; i++) {
-    const y = volTop + (volH / gridVolRows) * i
-    ctx.beginPath()
-    ctx.setLineDash([2, 4])
-    ctx.moveTo(pad.left, y)
-    ctx.lineTo(pad.left + chartW, y)
-    ctx.stroke()
-    ctx.setLineDash([])
-  }
-
   if (isRealtimeMode()) {
     const tickSlice = slice as TickData[]
 
@@ -300,17 +273,6 @@ function draw() {
     }
 
     if (pts.length > 0) {
-      const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + klineH)
-      grad.addColorStop(0, 'rgba(26,115,232,0.15)')
-      grad.addColorStop(1, 'rgba(26,115,232,0.01)')
-      ctx.fillStyle = grad
-      ctx.beginPath()
-      ctx.moveTo(pts[0].x, pad.top + klineH)
-      for (const p of pts) ctx.lineTo(p.x, p.y)
-      ctx.lineTo(pts[pts.length - 1].x, pad.top + klineH)
-      ctx.closePath()
-      ctx.fill()
-
       ctx.strokeStyle = '#1a73e8'
       ctx.lineWidth = 1.2
       ctx.beginPath()
@@ -338,23 +300,6 @@ function draw() {
       ctx.fillText(labels[i], pad.left + fracs[i] * chartW, h - 4)
     }
 
-    const buckets = new Map<string, { vol: number; up: boolean }>()
-    for (const t of tickSlice) {
-      const key = t.time.slice(0, 5)
-      const e = buckets.get(key)
-      if (e) {
-        e.vol += t.volume
-      } else {
-        buckets.set(key, { vol: t.volume, up: t.price >= (buckets.size === 0 ? t.price : 0) })
-      }
-    }
-    const minW = Math.max(1, chartW * 0.5 / 121)
-    for (const [key, e] of buckets) {
-      const bx = realtimeTimeToX(key + ':00', chartW, pad.left)
-      const vh = e.vol / maxVol * volH * 0.9
-      ctx.fillStyle = e.up ? tc.volUp : tc.volDown
-      ctx.fillRect(bx - minW / 2, volTop + volH - vh, minW, vh)
-    }
   } else {
     const step = view.barWidth + view.barGap
     const bw = view.barWidth
@@ -404,14 +349,6 @@ function draw() {
         ctx.textAlign = 'left'
         ctx.fillText(label, pad.left + (ma.length - 1) * step + step / 2 + 4, toY(lastValid) + 3)
       }
-    }
-
-    for (let i = 0; i < kSlice.length; i++) {
-      const d = kSlice[i]
-      const x = pad.left + i * step + step / 2
-      const vh = d.volume / maxVol * volH * 0.9
-      ctx.fillStyle = d.close >= d.open ? tc.volUp : tc.volDown
-      ctx.fillRect(x - candleW / 2, volTop + volH - vh, candleW, vh)
     }
 
     ctx.fillStyle = tc.text

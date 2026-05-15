@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import type { StockQuote } from '@/types'
 
 const MOCK_QUOTES: StockQuote[] = [
@@ -27,6 +27,7 @@ const MOCK_QUOTES: StockQuote[] = [
 
 export const useMarketStore = defineStore('market', () => {
   const quotes = reactive<Record<string, StockQuote>>({})
+  const timestamp = ref('')
 
   function loadMockData() {
     if (Object.keys(quotes).length > 0) return
@@ -39,9 +40,13 @@ export const useMarketStore = defineStore('market', () => {
     quotes[quote.code] = quote
   }
 
+  function setTimestamp(ts: string) {
+    timestamp.value = ts
+  }
+
   function getQuote(code: string): StockQuote | undefined {
     return quotes[code]
   }
 
-  return { quotes, loadMockData, updateQuote, getQuote }
+  return { quotes, timestamp, loadMockData, updateQuote, setTimestamp, getQuote }
 })

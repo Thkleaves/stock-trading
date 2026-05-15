@@ -2,7 +2,8 @@ import { ref, watch } from 'vue'
 
 const THEME_KEY = 'trading-system-theme'
 
-const isDark = ref<boolean>(localStorage.getItem(THEME_KEY) === 'dark')
+const stored = localStorage.getItem(THEME_KEY)
+const isDark = ref<boolean>(stored ? stored === 'dark' : true)
 
 function applyTheme(dark: boolean) {
   if (dark) {

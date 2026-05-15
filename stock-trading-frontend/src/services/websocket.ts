@@ -5,7 +5,8 @@ import { useTradeStore } from '@/stores/trade'
 import { useAuthStore } from '@/stores/auth'
 import { usePnlCurveStore } from '@/stores/pnlCurve'
 import { api } from '@/services/api'
-import type { WsMessage, WsQuoteData, WsQuotesData, WsOrderData, WsPositionData, WsTradeData, WsUserData, WsSyncData, WsErrorData, Trade, Order, Position, PnlCurveEntry } from '@/types'
+import { setKLines, setStockRefs, setDailyOhlc, prependIndexTicks } from '@/composables/useSimulation'
+import type { WsMessage, WsQuoteData, WsQuotesData, WsOrderData, WsPositionData, WsTradeData, WsUserData, WsSyncData, WsErrorData, WsIndexHistoryData, Trade, Order, Position, PnlCurveEntry } from '@/types'
 
 const WS_URL = 'ws://localhost:3001'
 const MAX_RECONNECT_INTERVAL = 30000
@@ -115,6 +116,9 @@ class MarketWebSocket {
         Object.values(data).forEach((quote) => {
           marketStore.updateQuote(quote)
         })
+        if (msg.timestamp) {
+          marketStore.setTimestamp(msg.timestamp)
+        }
         break
       }
       case 'order': {
@@ -153,11 +157,29 @@ class MarketWebSocket {
         if (data.pnlCurve) {
           usePnlCurveStore().setData(data.pnlCurve as PnlCurveEntry[])
         }
+        if (data.klDaily && data.klWeekly && data.klMonthly) {
+          setKLines(data.klDaily as any, data.klWeekly as any, data.klMonthly as any)
+        }
+        if (data.dailyOhlc) {
+          setStockRefs(data.dailyOhlc as any)
+          setDailyOhlc(data.dailyOhlc as any)
+        }
         break
       }
       case 'error': {
         const data = msg.data as WsErrorData
         console.error('[WebSocket] 服务端错误:', data.message)
+        break
+      }
+      case 'indexHistory': {
+        const data = msg.data as WsIndexHistoryData
+        if (data.data && data.data.length > 0) {
+          prependIndexTicks(data.data.map((t) => ({
+            time: t.time,
+            price: t.price,
+            volume: 0,
+          })))
+        }
         break
       }
       default:

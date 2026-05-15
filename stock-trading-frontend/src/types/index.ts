@@ -66,9 +66,11 @@ export interface CreateOrderRequest {
 }
 
 export interface WsMessage {
-  type: 'quote' | 'quotes' | 'order' | 'position' | 'trade' | 'user' | 'sync' | 'error'
+  type: 'quote' | 'quotes' | 'order' | 'position' | 'trade' | 'user' | 'sync' | 'error' | 'indexHistory'
   data: unknown
   eventSeq?: number
+  timestamp?: string
+  code?: string
 }
 
 export interface WsQuoteData {
@@ -102,6 +104,33 @@ export interface WsQuotesData {
   [code: string]: StockQuote
 }
 
+export interface WsKLineItem {
+  date: string
+  open: number
+  high: number
+  low: number
+  close: number
+  volume: number
+}
+
+export interface WsDailyOhlcItem {
+  code: string
+  name: string
+  type: 'stock' | 'index'
+  open: number
+  high: number
+  low: number
+  preClose: number
+}
+
+export interface WsIndexHistoryData {
+  code: string
+  data: {
+    time: string
+    price: number
+  }[]
+}
+
 export interface WsSyncData {
   quotes: Record<string, StockQuote>
   orders: Order[]
@@ -109,6 +138,10 @@ export interface WsSyncData {
   trades: Trade[]
   user: UserInfo | null
   pnlCurve: PnlCurveEntry[]
+  klDaily?: Record<string, WsKLineItem[]>
+  klWeekly?: Record<string, WsKLineItem[]>
+  klMonthly?: Record<string, WsKLineItem[]>
+  dailyOhlc?: Record<string, WsDailyOhlcItem>
 }
 
 export interface WsErrorData {

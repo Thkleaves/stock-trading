@@ -13,6 +13,7 @@
 | 开发端口 | 5173 |
 | 依赖后端 | `stock-trading-backend/` (REST API, :3000) |
 | 依赖实时服务 | `stock-trading-realtime/` (WebSocket, :3001) |
+| 数据来源 | 全量 WebSocket 推送，前端不主动请求静态 CSV |
 
 ---
 

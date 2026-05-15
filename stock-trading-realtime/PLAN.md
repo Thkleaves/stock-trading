@@ -19,10 +19,12 @@
 
 本服务是**纯推送层**，不持有业务数据，不处理业务逻辑。职责：
 
-1. **行情广播**：每秒对所有连接的客户端推送最新行情（价格随机波动）
-2. **事件转发**：接收后端 HTTP POST 的事件，推送给指定用户
-3. **连接管理**：维护所有 WebSocket 连接，断线自动清理
-4. **断线重连支持**：重连后为客户端提供全量状态同步
+1. **历史数据加载**：启动时从 `stock-trading-backend/data/` 加载所有标的日K线、周K线（聚合）、月K线（聚合）、昨收价
+2. **行情广播**：每秒对所有连接的客户端推送最新行情（聚合CSV逐行回放，替代随机游走），同时实时追踪日内最高/最低/开盘
+3. **事件转发**：接收后端 HTTP POST 的事件，推送给指定用户
+4. **连接管理**：维护所有 WebSocket 连接，断线自动清理
+5. **断线重连支持**：重连后为客户端提供全量状态同步（含K线数据）
+6. **时间同步**：`quotes` 消息携带 `timestamp` 字段，前端基于此同步显示时间
 
 ---
 
@@ -33,12 +35,18 @@ stock-trading-realtime/
 ├── package.json
 ├── tsconfig.json
 ├── Dockerfile
+├── data/
+│   └── intraday_aggregated.csv   # 聚合行情数据（由 aggregate_intraday.py 生成）
+├── scripts/
+│   └── aggregate_intraday.py     # 将23个独立CSV聚合成单一宽表CSV
 ├── src/
 │   ├── index.ts                  # 入口：启动 HTTP + WebSocket 服务
 │   ├── types/
 │   │   └── index.ts              # 类型定义（与后端共享）
 │   ├── market/
-│   │   └── generator.ts          # 行情数据生成器（每秒随机波动）
+│   │   ├── generator.ts          # 股票定义（STOCKS数组，含code/name/initialPrice/volatility）
+│   │   ├── csvReader.ts          # 聚合CSV读取器（加载→逐行回放→计算change/changePercent）
+│   │   └── klineLoader.ts        # 历史K线加载器（从backend-data加载日/周/月K线，追踪日内OHLC）
 │   ├── ws/
 │   │   ├── server.ts             # WebSocket 服务端（连接管理 + 广播）
 │   │   └── protocols.ts          # 消息协议定义
@@ -48,52 +56,44 @@ stock-trading-realtime/
 
 ---
 
-## 四、行情生成器设计（generator.ts）
+## 四、行情回放设计（csvReader.ts）
 
-### 股票初始数据
+### 数据来源
 
-> **权威数据源**：`stock-trading-backend/data/stock_master.csv`（20 只股票 + 3 个指数）。
-> 实时服务的 `STOCKS` 数组与该 CSV 保持同步，`initialPrice` = `base_price`，`volatility` 用于每 tick 的波动幅度。
+聚合CSV文件 `data/intraday_aggregated.csv` 由脚本 `scripts/aggregate_intraday.py` 预生成。该文件包含全部23个标的在2026-01-02当日共约14402秒的价格数据（宽表格式：24列 = timestamp + 23个code列）。缺失秒级数据点已做前向填充（forward-fill），无空洞。
+
+### 加载与回放算法
 
 ```typescript
-// 以 stock_master.csv 为权威来源，共 20 股 + 3 指数
-const STOCKS = [
-  { code: '600519', name: '贵州茅台', initialPrice: 1450.0, volatility: 0.22 },
-  { code: '000858', name: '五粮液',   initialPrice: 130.0,  volatility: 0.28 },
-  { code: '300750', name: '宁德时代', initialPrice: 250.0,  volatility: 0.35 },
-  { code: '002594', name: '比亚迪',   initialPrice: 280.0,  volatility: 0.3  },
-  // ... 共 23 条（含 000001 上证指数、399001 深证成指、399006 创业板指）
-]
+// 启动时一次性加载全部行到内存
+function loadAggregatedCsv(): void
+
+// 每秒执行一次，返回值包含 timestamp 和全部23个 StockQuote
+function getNextQuotes(): { timestamp: string; quotes: Map<string, StockQuote> } | null
+
+// 回放完毕自动循环
+function resetCsvReader(): void
 ```
 
-### 价格波动算法
-```typescript
-// 每秒执行一次，每只股票按自身 volatility 个性化波动
-function tick(quotes: Map<string, StockQuote>) {
-  for (const [code, quote] of quotes) {
-    const vol = STOCKS.find(s => s.code === code)!.volatility
-    const pct = (Math.random() - 0.5) * vol / 100     // 波动幅度由 CSV 决定
-    const newPrice = prevPrice * (1 + pct)
-    quote.price = round(newPrice, 2)
-    quote.change = round(newPrice - prevPrice, 2)
-    quote.changePercent = round(pct * 100, 2)
-  }
-}
-```
+**价格变更计算**：每行价格与上一行的差额即为 `change`，相对上一行的百分比为 `changePercent`。首行（开盘价）的 change/changePercent 均为 0。
 
-### 广播格式
+### 广播格式（替代原逐支 quote 广播）
+
 ```json
 {
-  "type": "quote",
+  "type": "quotes",
+  "timestamp": "2026-01-02 09:30:00",
   "data": {
-    "code": "000001",
-    "name": "平安银行",
-    "price": 12.55,
-    "change": 0.05,
-    "changePercent": 0.40
+    "600519": { "code": "600519", "name": "贵州茅台", "price": 2313.63, "change": 1.23, "changePercent": 0.05 },
+    "000858": { "code": "000858", "name": "五粮液", "price": 95.93, "change": -0.50, "changePercent": -0.52 },
+    "...": "..."
   }
 }
 ```
+
+**关键变更**：
+- 每秒广播 1 条 `quotes` 批量消息（包含所有23个标的），替代原先 23 条逐支 `quote` 消息，消息数从 23n/秒 降至 1/秒
+- 新增 `timestamp` 字段，前端据此同步显示时间，不再依赖 `new Date()`
 
 ---
 
@@ -200,7 +200,13 @@ sync 消息格式：
     "quotes": { "000001": {...}, "000002": {...}, ... },
     "orders": [...],
     "positions": [...],
-    "trades": [...]
+    "trades": [...],
+    "user": {...},
+    "pnlCurve": [...],
+    "klDaily": { "600519": [{"date":"2025-01-02","open":1450,...}, ...], ... },
+    "klWeekly": { "600519": [...], ... },
+    "klMonthly": { "600519": [...], ... },
+    "dailyOhlc": { "600519": {"code":"600519","name":"贵州茅台","type":"stock","open":2313,"high":2350,"low":2290,"preClose":2299}, ... }
   }
 }
 ```
@@ -213,8 +219,8 @@ sync 消息格式：
 
 | type | 触发时机 | data 内容 |
 |---|---|---|
-| `quote` | 每秒 | 单支股票行情 `{ code, name, price, change, changePercent }` |
-| `quotes` | 客户端首次订阅 | 全部股票行情（批量）`{ [code]: StockQuote }` |
+| `quote` | 每秒（已废弃） | 单支股票行情（现已被 `quotes` 批量消息替代） |
+| `quotes` | 每秒CSV回放 / 客户端首次订阅 | 全部23个标的行情（批量）`{ [code]: StockQuote }` + `timestamp` 字段 |
 | `order` | 后端撮合后推送 | 单个委托 `Order` |
 | `position` | 后端撮合后推送 | 用户全部持仓 `Position[]` |
 | `trade` | 后端撮合后推送 | 单笔成交 `Trade` |

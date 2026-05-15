@@ -47,7 +47,9 @@ stock-trading/
 
 - **前端 → 后端**：HTTP REST（登录、注册、下单、查询）
 - **后端 → 实时服务**：内部 HTTP POST（撮合/委托变更事件）
-- **实时服务 → 前端**：WebSocket 长连接（行情推送 + 用户事件推送）
+- **实时服务 → 前端**：WebSocket 长连接（聚合CSV回放行情 + 用户事件推送）
+- **行情数据源**：聚合CSV `intraday_aggregated.csv`（23个标的按时间戳对齐），替代随机游走生成
+- **时间同步**：`quotes` 消息携带 `timestamp` 字段，前端基于此同步显示时间
 
 ---
 
@@ -191,18 +193,32 @@ stock-trading-realtime/
 ├── package.json
 ├── tsconfig.json
 ├── Dockerfile
+├── data/
+│   └── intraday_aggregated.csv   # 聚合行情数据（脚本生成）
+├── scripts/
+│   └── aggregate_intraday.py     # CSV聚合脚本
 ├── src/
 │   ├── index.ts                  # 入口：启动 HTTP + WebSocket 服务（端口 3001）
 │   ├── types/
 │   │   └── index.ts              # 类型定义（StockQuote, Order, Position, Trade）
 │   ├── market/
-│   │   └── generator.ts          # 行情生成器（每秒 ±0.5% 随机波动）
+│   │   ├── generator.ts          # 股票定义（STOCKS数组，含code/name/volatility）
+│   │   └── csvReader.ts          # 聚合CSV读取器（加载→逐行回放）
 │   ├── ws/
 │   │   ├── server.ts             # WebSocket 服务端（连接管理 + 广播）
 │   │   └── protocols.ts          # 消息协议定义（subscribe / resync / ping）
 │   └── routes/
 │       └── internal.ts           # 内部 HTTP 接口（/internal/event + /internal/health）
 ```
+
+### 行情推送机制
+
+**CSV回放模式**（替代原随机游走生成）：
+1. 启动时读取 `data/intraday_aggregated.csv`（一次性加载全部14402行到内存）
+2. 每秒取下一行，该行包含所有23个标的在该秒的价格
+3. `change` 和 `changePercent` 实时计算（当前价格 vs 上一秒价格）
+4. 广播一条 `quotes` 批量消息（含 `timestamp`），替代原先的23条逐支 `quote` 消息
+5. 回放结束后自动循环（reset → 重新开始）
 
 ### 消息协议
 
@@ -328,3 +344,19 @@ python scripts/synthesize_indices.py
 - `399006_创业板指_intraday.csv`
 
 **算法**：对每秒，计算所有成分股相对各自开盘价的收益率，以成交额加权平均后应用到指数开盘价上；成交量/成交额为成分股之和。
+
+### 8.5 日内数据聚合脚本
+
+**脚本**：[`scripts/aggregate_intraday.py`](file:///c:/Users/Kleaves/Desktop/Trading-system/stock-trading-realtime/scripts/aggregate_intraday.py)
+
+**功能**：将20支股票和3个指数的独立秒级CSV文件聚合成**单一宽表CSV**。每行一个时间戳，列依次为 `timestamp, 600519, 000858, ..., 399006`（共24列）。缺失秒级数据点使用前向填充（forward-fill），确保所有标的在所有时间戳上都有价格，无空洞。
+
+**执行**：
+```bash
+cd stock-trading-realtime
+python scripts/aggregate_intraday.py
+```
+
+**输出**：`stock-trading-realtime/data/intraday_aggregated.csv`（约14402行×24列）
+
+**设计意图**：real-time服务在推送行情时只需读取这一个文件，减少23次文件I/O为1次。时间戳列被随 `quotes` 消息下发给前端，前端据此同步显示时间（不再依赖本地 `new Date()`）。

@@ -501,14 +501,6 @@ async function handleSell() {
                     <td class="depth-price color-down mono">{{ level.price.toFixed(getDepthPrecision(stockInfo?.price ?? 0)) }}</td>
                     <td class="depth-vol mono">{{ level.volume }}</td>
                   </tr>
-                  <tr class="depth-row depth-mid">
-                    <td class="depth-col" colspan="3">
-                      <span class="depth-mid-price mono">{{ (stockInfo?.price ?? 0).toFixed(getDepthPrecision(stockInfo?.price ?? 0)) }}</span>
-                      <span :class="(stockInfo?.change ?? 0) >= 0 ? 'color-up' : 'color-down'" class="depth-mid-change mono">
-                        {{ (stockInfo?.change ?? 0) >= 0 ? '▲' : '▼' }} {{ (stockInfo?.changePercent ?? 0).toFixed(2) }}%
-                      </span>
-                    </td>
-                  </tr>
                   <tr v-for="(level, idx) in depthLevels.bids" :key="'bid-'+idx" class="depth-row depth-buy">
                     <td class="depth-col">买{{ idx + 1 }}</td>
                     <td class="depth-price color-up mono">{{ level.price.toFixed(getDepthPrecision(stockInfo?.price ?? 0)) }}</td>

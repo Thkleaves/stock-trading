@@ -20,7 +20,7 @@ const activePath = computed(() => route.path)
 
 <template>
   <div class="app-layout">
-    <nav class="top-nav">
+    <nav v-if="route.path !== '/login'" class="top-nav">
       <div class="nav-brand">
         <span class="brand-logo">TRADE</span>
         <span class="brand-divider">|</span>
