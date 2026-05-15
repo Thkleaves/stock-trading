@@ -5,7 +5,7 @@ import { useTradeStore } from '@/stores/trade'
 import { useAuthStore } from '@/stores/auth'
 import { usePnlCurveStore } from '@/stores/pnlCurve'
 import { api } from '@/services/api'
-import { setKLines, setStockRefs, setDailyOhlc, prependIndexTicks } from '@/composables/useSimulation'
+import { setKLines, setStockRefs, setDailyOhlc, prependIndexTicks, applyMarketUpdate } from '@/composables/useSimulation'
 import type { WsMessage, WsQuoteData, WsQuotesData, WsOrderData, WsPositionData, WsTradeData, WsUserData, WsSyncData, WsErrorData, WsIndexHistoryData, Trade, Order, Position, PnlCurveEntry } from '@/types'
 
 const WS_URL = 'ws://localhost:3001'
@@ -119,6 +119,7 @@ class MarketWebSocket {
         if (msg.timestamp) {
           marketStore.setTimestamp(msg.timestamp)
         }
+        applyMarketUpdate()
         break
       }
       case 'order': {
@@ -164,6 +165,7 @@ class MarketWebSocket {
           setStockRefs(data.dailyOhlc as any)
           setDailyOhlc(data.dailyOhlc as any)
         }
+        applyMarketUpdate()
         break
       }
       case 'error': {
@@ -172,9 +174,9 @@ class MarketWebSocket {
         break
       }
       case 'indexHistory': {
-        const data = msg.data as WsIndexHistoryData
-        if (data.data && data.data.length > 0) {
-          prependIndexTicks(data.data.map((t) => ({
+        const tickData = msg.data as WsIndexHistoryData
+        if (tickData && tickData.length > 0) {
+          prependIndexTicks(tickData.map((t) => ({
             time: t.time,
             price: t.price,
             volume: 0,

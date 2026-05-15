@@ -9,6 +9,7 @@
 ```
 stock-trading/
 ├── README.md                      ← 本文件（整体规划）
+├── start.bat                      ← 一键环境检查 & 启动脚本
 ├── docker-compose.yml             ← 一键启动三服务
 ├── stock-trading-frontend/        ← 子项目 1：前端
 ├── stock-trading-backend/         ← 子项目 2：后端
@@ -50,6 +51,41 @@ stock-trading/
 - **实时服务 → 前端**：WebSocket 长连接（聚合CSV回放行情 + 用户事件推送）
 - **行情数据源**：聚合CSV `intraday_aggregated.csv`（23个标的按时间戳对齐），替代随机游走生成
 - **时间同步**：`quotes` 消息携带 `timestamp` 字段，前端基于此同步显示时间
+
+---
+
+## 快速启动（一键脚本）
+
+**Windows 用户双击根目录下的 `start.bat`** 即可自动完成以下全部步骤：
+
+1. 检查 Node.js / npm / Python 运行环境
+2. 自动安装三个子项目的 npm 依赖（首次运行时）
+3. 依次在独立命令行窗口启动三个服务
+
+脚本会依次打开三个窗口：
+
+| 窗口标题 | 服务 | 端口 | 命令 |
+|---|---|---|---|
+| `Backend :3000` | stock-trading-backend | 3000 | `npm run dev` |
+| `Realtime :3001` | stock-trading-realtime | 3001 | `npm run dev` |
+| `Frontend :5173` | stock-trading-frontend | 5173 | `npm run dev` |
+
+启动后在浏览器访问 **http://localhost:5173** 即可使用。
+
+关闭 `start.bat` 的主窗口不影响已启动的服务，各服务窗口可独立关闭。
+
+### 手动启动（备选）
+
+```bash
+# 终端 1：后端
+cd stock-trading-backend && npm install && npm run dev
+
+# 终端 2：实时服务
+cd stock-trading-realtime && npm install && npm run dev
+
+# 终端 3：前端
+cd stock-trading-frontend && npm install && npm run dev
+```
 
 ---
 

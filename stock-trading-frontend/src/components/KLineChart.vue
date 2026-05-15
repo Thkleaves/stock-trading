@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useTheme } from '@/composables/useTheme'
-import type { KLineData, TickData, ChartMode } from '@/data/mock'
+import type { ChartMode } from '@/types'
+import type { KLineRow, TickPoint } from '@/composables/useSimulation'
 
 const props = defineProps<{
-  data: KLineData[]
-  tickData?: TickData[]
+  data: KLineRow[]
+  tickData?: TickPoint[]
   mode?: ChartMode
   height?: string
 }>()
@@ -158,20 +159,20 @@ function getVisibleRange(): { start: number; end: number } {
   return { start, end }
 }
 
-function getOpenBaseline(slice: Array<KLineData | TickData>): number {
+function getOpenBaseline(slice: Array<KLineRow | TickPoint>): number {
   if (isRealtimeMode()) {
-    const tickSlice = slice as TickData[]
+    const tickSlice = slice as TickPoint[]
     if (tickSlice.length > 0) return tickSlice[0].price
     return 0
   }
-  const kSlice = slice as KLineData[]
+  const kSlice = slice as KLineRow[]
   if (kSlice.length > 0) return kSlice[0].open
   return 0
 }
 
-function getPrices(slice: Array<KLineData | TickData>): number[] {
-  if (isRealtimeMode()) return (slice as TickData[]).map((d) => d.price)
-  return (slice as KLineData[]).flatMap((d) => [d.high, d.low])
+function getPrices(slice: Array<KLineRow | TickPoint>): number[] {
+  if (isRealtimeMode()) return (slice as TickPoint[]).map((d) => d.price)
+  return (slice as KLineRow[]).flatMap((d) => [d.high, d.low])
 }
 
 function draw() {
@@ -202,7 +203,7 @@ function draw() {
   view.startIndex = start
   view.endIndex = end
 
-  let slice: Array<KLineData | TickData>
+  let slice: Array<KLineRow | TickPoint>
   if (isRealtimeMode() && props.tickData && props.tickData.length > 0) {
     slice = props.tickData.slice(start, end)
   } else if (isRealtimeMode() && props.data.length > 0) {
@@ -265,7 +266,7 @@ function draw() {
   ctx.setLineDash([])
 
   if (isRealtimeMode()) {
-    const tickSlice = slice as TickData[]
+    const tickSlice = slice as TickPoint[]
 
     const pts: { x: number; y: number }[] = []
     for (const t of tickSlice) {
@@ -305,7 +306,7 @@ function draw() {
     const bw = view.barWidth
     const candleW = Math.max(1, bw * 0.8)
 
-    const kSlice = slice as KLineData[]
+    const kSlice = slice as KLineRow[]
 
     for (let i = 0; i < kSlice.length; i++) {
       const d = kSlice[i]
@@ -400,7 +401,7 @@ function draw() {
 
     if (isCandleMode()) {
       const idx = crosshair.index
-      const kSlice = (slice as KLineData[])
+      const kSlice = (slice as KLineRow[])
       if (idx >= 0 && idx < kSlice.length) {
         const kd = kSlice[idx]
         rowY += 16; ctx.fillText(`开: ${kd.open}`, tx + 6, rowY)

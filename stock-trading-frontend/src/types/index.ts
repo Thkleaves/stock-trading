@@ -113,6 +113,8 @@ export interface WsKLineItem {
   volume: number
 }
 
+export type ChartMode = 'realtime' | 'day' | 'week' | 'month'
+
 export interface WsDailyOhlcItem {
   code: string
   name: string
@@ -123,13 +125,7 @@ export interface WsDailyOhlcItem {
   preClose: number
 }
 
-export interface WsIndexHistoryData {
-  code: string
-  data: {
-    time: string
-    price: number
-  }[]
-}
+export type WsIndexHistoryData = { time: string; price: number }[]
 
 export interface WsSyncData {
   quotes: Record<string, StockQuote>

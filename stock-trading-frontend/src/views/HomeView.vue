@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSimulation } from '@/composables/useSimulation'
-import type { ChartMode } from '@/data/mock'
+import type { ChartMode } from '@/types'
 import KLineChart from '@/components/KLineChart.vue'
 
 const router = useRouter()

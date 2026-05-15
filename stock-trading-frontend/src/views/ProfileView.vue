@@ -82,6 +82,22 @@ let resizeObserver: ResizeObserver | null = null
 
 const pnlCurveData = computed(() => pnlCurveStore.data)
 
+const crosshair = ref<{ idx: number; mouseX: number; mouseY: number } | null>(null)
+
+function findNearestPoint(mouseX: number, padLeft: number, pw: number, dataLen: number): number {
+  const scaleX = (i: number) => padLeft + (i / (dataLen - 1)) * pw
+  let nearestIdx = 0
+  let minDist = Infinity
+  for (let i = 0; i < dataLen; i++) {
+    const dist = Math.abs(scaleX(i) - mouseX)
+    if (dist < minDist) {
+      minDist = dist
+      nearestIdx = i
+    }
+  }
+  return nearestIdx
+}
+
 function drawPnlCurve() {
   const canvas = canvasRef.value
   if (!canvas) return
@@ -178,13 +194,74 @@ function drawPnlCurve() {
 
   const lastX = scaleX(values.length - 1)
   const lastY = scaleY(values[values.length - 1])
-  ctx.beginPath()
-  ctx.arc(lastX, lastY, 4, 0, Math.PI * 2)
-  ctx.fillStyle = tc.line
-  ctx.fill()
-  ctx.strokeStyle = tc.dotStroke
-  ctx.lineWidth = 2
-  ctx.stroke()
+
+  const ch = crosshair.value
+  if (ch && ch.idx >= 0 && ch.idx < data.length) {
+    const cx = scaleX(ch.idx)
+    const cy = scaleY(values[ch.idx])
+
+    ctx.save()
+    ctx.setLineDash([4, 4])
+    ctx.strokeStyle = tc.textMuted
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(cx, pad.top)
+    ctx.lineTo(cx, pad.top + ph)
+    ctx.stroke()
+    ctx.restore()
+
+    ctx.beginPath()
+    ctx.arc(cx, cy, 5, 0, Math.PI * 2)
+    ctx.fillStyle = tc.line
+    ctx.fill()
+    ctx.strokeStyle = tc.dotStroke
+    ctx.lineWidth = 2.5
+    ctx.stroke()
+
+    ctx.beginPath()
+    ctx.arc(cx, cy, 2.5, 0, Math.PI * 2)
+    ctx.fillStyle = tc.dotStroke
+    ctx.fill()
+  } else {
+    ctx.beginPath()
+    ctx.arc(lastX, lastY, 4, 0, Math.PI * 2)
+    ctx.fillStyle = tc.line
+    ctx.fill()
+    ctx.strokeStyle = tc.dotStroke
+    ctx.lineWidth = 2
+    ctx.stroke()
+  }
+}
+
+function onCanvasMouseMove(e: MouseEvent) {
+  const canvas = canvasRef.value
+  if (!canvas) return
+  const data = pnlCurveData.value
+  if (data.length < 2) {
+    crosshair.value = null
+    return
+  }
+
+  const rect = canvas.getBoundingClientRect()
+  const mouseX = e.clientX - rect.left
+  const mouseY = e.clientY - rect.top
+
+  const padLeft = 60
+  const pw = rect.width - padLeft - 16
+
+  if (mouseX < padLeft || mouseX > rect.width - 16) {
+    crosshair.value = null
+    return
+  }
+
+  const idx = findNearestPoint(mouseX, padLeft, pw, data.length)
+  crosshair.value = { idx, mouseX, mouseY }
+  drawPnlCurve()
+}
+
+function onCanvasMouseLeave() {
+  crosshair.value = null
+  drawPnlCurve()
 }
 
 onMounted(() => {
@@ -235,7 +312,27 @@ watch(pnlCurveData, () => {
           <span class="card-subtitle">近30日</span>
         </div>
         <div class="pnl-chart-wrap">
-          <canvas ref="canvasRef" class="pnl-canvas"></canvas>
+          <canvas
+            ref="canvasRef"
+            class="pnl-canvas"
+            @mousemove="onCanvasMouseMove"
+            @mouseleave="onCanvasMouseLeave"
+          ></canvas>
+          <div
+            v-if="crosshair && crosshair.idx >= 0 && crosshair.idx < pnlCurveData.length"
+            class="pnl-tooltip"
+            :style="{
+              left: crosshair.mouseX + 'px',
+              top: Math.max(0, crosshair.mouseY - 52) + 'px',
+            }"
+          >
+            <div class="pnl-tooltip-date">{{ pnlCurveData[crosshair.idx].date }}</div>
+            <div
+              :class="['pnl-tooltip-value', pnlCurveData[crosshair.idx].value >= 0 ? 'color-up' : 'color-down']"
+            >
+              {{ formatPnl(pnlCurveData[crosshair.idx].value) }}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -400,6 +497,33 @@ watch(pnlCurveData, () => {
   left: 0;
   width: 100%;
   height: 100%;
+}
+
+.pnl-tooltip {
+  position: absolute;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 10;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  padding: 6px 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.pnl-tooltip-date {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-bottom: 2px;
+}
+
+.pnl-tooltip-value {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-mono);
 }
 
 .detail-section {

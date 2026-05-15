@@ -28,7 +28,6 @@ export interface KLineRow {
 
 const currentTime = ref('')
 const currentDate = ref('')
-const isRunning = ref(false)
 const isLoaded = ref(false)
 
 const stockRefs = ref<Record<string, StockRef>>({})
@@ -41,14 +40,15 @@ const monthlyKLines = ref<Record<string, KLineRow[]>>({})
 
 const indexTicks = ref<TickPoint[]>([])
 
-let timerHandle: ReturnType<typeof setInterval> | null = null
-
-function tickFromWebSocket() {
-  const now = new Date()
-  currentTime.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
-  currentDate.value = now.toISOString().split('T')[0]
-
+export function applyMarketUpdate() {
   const marketStore = useMarketStore()
+  const ts = marketStore.timestamp
+  if (ts && ts.length >= 19) {
+    const [datePart, timePart] = ts.split(' ')
+    currentDate.value = datePart
+    currentTime.value = timePart.length >= 8 ? timePart.slice(0, 8) : timePart
+  }
+
   for (const [code, quote] of Object.entries(marketStore.quotes)) {
     if (!stockRefs.value[code]) {
       const isIndex = code === '000001' || code === '399001' || code === '399006'
@@ -88,47 +88,6 @@ function tickFromWebSocket() {
     }
   }
 }
-
-function tick() {
-  tickFromWebSocket()
-}
-
-function start() {
-  if (timerHandle) return
-  isRunning.value = true
-  timerHandle = setInterval(tick, 1000)
-}
-
-function stop() {
-  if (timerHandle) {
-    clearInterval(timerHandle)
-    timerHandle = null
-  }
-  isRunning.value = false
-}
-
-function resetAndStart() {
-  stop()
-
-  const now = new Date()
-  currentTime.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
-  currentDate.value = now.toISOString().split('T')[0]
-
-  for (const code of Object.keys(stockTicks)) {
-    stockTicks[code] = []
-  }
-  indexTicks.value = []
-  start()
-}
-
-function init() {
-  const now = new Date()
-  currentTime.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
-  currentDate.value = now.toISOString().split('T')[0]
-  start()
-}
-
-init()
 
 export function setKLines(
   klDaily: Record<string, KLineRow[]>,
@@ -172,7 +131,6 @@ export function useSimulation() {
   return {
     currentTime,
     currentDate,
-    isRunning,
     isLoaded,
     stockRefs,
     currentPrices,
@@ -181,8 +139,5 @@ export function useSimulation() {
     dailyKLines,
     weeklyKLines,
     monthlyKLines,
-    start,
-    stop,
-    resetAndStart,
   }
 }

@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import type { ChartMode } from '@/data/mock'
-import type { Order } from '@/types'
+import type { ChartMode, Order } from '@/types'
 import KLineChart from '@/components/KLineChart.vue'
 import { useSimulation } from '@/composables/useSimulation'
 import { useOrderStore } from '@/stores/order'
