@@ -21,7 +21,7 @@ BACKEND_DATA = os.path.join(SCRIPT_DIR, "..", "..", "stock-trading-backend", "da
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "..", "data")
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "intraday_aggregated.csv")
 
-TRADE_DATE = "2026-01-02"
+TRADE_DATE = "2025-12-31"
 
 STOCK_CODES = [
     "600519", "000858", "300750", "002594", "601318", "600036",

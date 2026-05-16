@@ -5,7 +5,7 @@ import { WebSocketServer, WebSocket } from 'ws'
 import { STOCKS } from './market/generator.js'
 import { loadAggregatedCsv, getNextQuotes, resetCsvReader, getTotalRows, getCurrentRowIndex, getHistoricalTicks } from './market/csvReader.js'
 import { loadKLines, getAllDailyKLines, getAllWeeklyKLines, getAllMonthlyKLines, getDailyOhlc, getPreCloseMap } from './market/klineLoader.js'
-import { setWss, configureWebSocket, broadcastAll, sendToUser, onSubscribe, onResync } from './ws/server.js'
+import { setWss, configureWebSocket, broadcastAll, sendToUser, onSubscribe, onResync, onSetSpeed, onReset } from './ws/server.js'
 import internalRouter from './routes/internal.js'
 import type { StockQuote, Order, Position, Trade, UserInfo } from './types/index.js'
 
@@ -33,6 +33,69 @@ let dailyHighs = new Map<string, number>()
 let dailyLows = new Map<string, number>()
 let dailyOpens = new Map<string, number>()
 const preCloseMap = getPreCloseMap()
+
+let currentSpeed: number = 1
+let tickTimer: ReturnType<typeof setInterval> | null = null
+let tickStopped = false
+
+function getTickInterval(): number {
+  return Math.max(10, Math.floor(1000 / currentSpeed))
+}
+
+function isAfterMarketClose(timestamp: string): boolean {
+  const idx = timestamp.indexOf(' ')
+  if (idx < 0) return false
+  const timePart = timestamp.substring(idx + 1)
+  return timePart >= '15:00:00'
+}
+
+function stopTick() {
+  if (tickTimer) {
+    clearInterval(tickTimer)
+    tickTimer = null
+  }
+}
+
+function startTick() {
+  stopTick()
+  tickStopped = false
+  const interval = getTickInterval()
+  console.log(`[realtime] 启动行情推送, 速度: ${currentSpeed}x, 间隔: ${interval}ms`)
+  tickTimer = setInterval(() => {
+    const result = getNextQuotes()
+    if (!result) {
+      console.log(`[realtime] CSV回放结束，已播放 ${getTotalRows()} 行`)
+      stopTick()
+      tickStopped = true
+      return
+    }
+
+    currentQuotes = result.quotes
+    currentTimestamp = result.timestamp
+
+    for (const [code, quote] of result.quotes) {
+      const high = dailyHighs.get(code) ?? -Infinity
+      if (quote.price > high) dailyHighs.set(code, quote.price)
+      const low = dailyLows.get(code) ?? Infinity
+      if (quote.price < low) dailyLows.set(code, quote.price)
+      if (!dailyOpens.has(code)) {
+        dailyOpens.set(code, quote.price)
+      }
+    }
+
+    broadcastAll({
+      type: 'quotes',
+      timestamp: result.timestamp,
+      data: Object.fromEntries(result.quotes),
+    })
+
+    if (isAfterMarketClose(result.timestamp)) {
+      console.log(`[realtime] 已达休市时间 ${result.timestamp}，停止推送`)
+      stopTick()
+      tickStopped = true
+    }
+  }, interval)
+}
 
 function quotesToRecord(): Record<string, StockQuote> {
   const record: Record<string, StockQuote> = {}
@@ -136,36 +199,44 @@ onResync(async (userId: string, ws: WebSocket) => {
   }
 })
 
-setInterval(() => {
-  const result = getNextQuotes()
-  if (!result) {
-    console.log(`[realtime] CSV回放结束，已播放 ${getTotalRows()} 行，重新开始`)
-    dailyHighs = new Map()
-    dailyLows = new Map()
-    dailyOpens = new Map()
-    resetCsvReader()
-    return
-  }
+onSetSpeed((speed: number) => {
+  currentSpeed = speed
+  broadcastAll({
+    type: 'speedChanged',
+    data: { speed: currentSpeed },
+  })
+  startTick()
+})
 
-  currentQuotes = result.quotes
-  currentTimestamp = result.timestamp
+onReset(async () => {
+  console.log('[realtime] 收到重置请求，清理所有数据重新开始')
+  stopTick()
+  currentSpeed = 1
 
-  for (const [code, quote] of result.quotes) {
-    const high = dailyHighs.get(code) ?? -Infinity
-    if (quote.price > high) dailyHighs.set(code, quote.price)
-    const low = dailyLows.get(code) ?? Infinity
-    if (quote.price < low) dailyLows.set(code, quote.price)
-    if (!dailyOpens.has(code)) {
-      dailyOpens.set(code, quote.price)
-    }
+  dailyHighs = new Map()
+  dailyLows = new Map()
+  dailyOpens = new Map()
+  currentQuotes = new Map()
+  currentTimestamp = ''
+
+  resetCsvReader()
+
+  try {
+    await fetch(`${BACKEND_URL}/api/reset`, { method: 'POST' })
+    console.log('[realtime] 后端交易数据已重置')
+  } catch {
+    console.error('[realtime] 重置后端交易数据失败')
   }
 
   broadcastAll({
-    type: 'quotes',
-    timestamp: result.timestamp,
-    data: Object.fromEntries(result.quotes),
+    type: 'resetComplete',
+    data: { speed: currentSpeed },
   })
-}, 1000)
+
+  startTick()
+})
+
+startTick()
 
 server.listen(PORT, () => {
   console.log(`[realtime] WebSocket + HTTP 服务已启动，端口 ${PORT}`)

@@ -173,3 +173,16 @@ export function useSimulation() {
     monthlyKLines,
   }
 }
+
+export function resetSimulationState() {
+  currentTime.value = ''
+  currentDate.value = ''
+  isLoaded.value = false
+  Object.keys(stockRefs.value).forEach((k) => delete stockRefs.value[k])
+  Object.keys(currentPrices).forEach((k) => delete currentPrices[k])
+  Object.keys(stockTicks).forEach((k) => delete stockTicks[k])
+  Object.keys(indexTicks).forEach((k) => delete indexTicks[k])
+  Object.keys(dailyKLines.value).forEach((k) => delete dailyKLines.value[k])
+  Object.keys(weeklyKLines.value).forEach((k) => delete weeklyKLines.value[k])
+  Object.keys(monthlyKLines.value).forEach((k) => delete monthlyKLines.value[k])
+}

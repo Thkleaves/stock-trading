@@ -1,19 +1,20 @@
 export const WS_MESSAGE_TYPES = {
-  SERVER_TO_CLIENT: ['quote', 'quotes', 'order', 'position', 'trade', 'user', 'sync', 'pong', 'error', 'indexHistory'] as const,
-  CLIENT_TO_SERVER: ['subscribe', 'resync', 'ping'] as const,
+  SERVER_TO_CLIENT: ['quote', 'quotes', 'order', 'position', 'trade', 'user', 'sync', 'pong', 'error', 'indexHistory', 'resetComplete', 'speedChanged'] as const,
+  CLIENT_TO_SERVER: ['subscribe', 'resync', 'ping', 'setSpeed', 'reset'] as const,
 } as const
 
 export interface WsServerMessage {
-  type: 'quote' | 'quotes' | 'order' | 'position' | 'trade' | 'user' | 'sync' | 'pong' | 'error' | 'indexHistory'
+  type: 'quote' | 'quotes' | 'order' | 'position' | 'trade' | 'user' | 'sync' | 'pong' | 'error' | 'indexHistory' | 'resetComplete' | 'speedChanged'
   data: unknown
   eventSeq?: number
   timestamp?: string
 }
 
 export interface WsClientMessage {
-  type: 'subscribe' | 'resync' | 'ping'
+  type: 'subscribe' | 'resync' | 'ping' | 'setSpeed' | 'reset'
   userId?: string
   data?: unknown
+  speed?: number
 }
 
 export interface QuoteMessage {

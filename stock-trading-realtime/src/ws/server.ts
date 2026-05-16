@@ -9,6 +9,8 @@ const pendingClients = new Set<WebSocket>()
 let onSubscribeCallback: ((userId: string, ws: WebSocket) => void) | null = null
 let onResyncCallback: ((userId: string, ws: WebSocket) => void) | null = null
 let onDisconnectCallback: ((userId: string) => void) | null = null
+let onSetSpeedCallback: ((speed: number) => void) | null = null
+let onResetCallback: (() => void) | null = null
 
 export function onSubscribe(cb: (userId: string, ws: WebSocket) => void) {
   onSubscribeCallback = cb
@@ -20,6 +22,14 @@ export function onResync(cb: (userId: string, ws: WebSocket) => void) {
 
 export function onDisconnect(cb: (userId: string) => void) {
   onDisconnectCallback = cb
+}
+
+export function onSetSpeed(cb: (speed: number) => void) {
+  onSetSpeedCallback = cb
+}
+
+export function onReset(cb: () => void) {
+  onResetCallback = cb
 }
 
 function heartbeat(ws: WebSocket) {
@@ -103,6 +113,18 @@ export function configureWebSocket(wss: WebSocketServer) {
         }
         case 'ping': {
           sendToWs(ws, { type: 'pong', data: {} })
+          break
+        }
+        case 'setSpeed': {
+          if (msg.speed == null || ![1, 10, 60, 180].includes(msg.speed)) {
+            sendToWs(ws, { type: 'error', data: { message: '无效的速度值，支持 1, 10, 60, 180' } })
+            return
+          }
+          onSetSpeedCallback?.(msg.speed)
+          break
+        }
+        case 'reset': {
+          onResetCallback?.()
           break
         }
         default: {

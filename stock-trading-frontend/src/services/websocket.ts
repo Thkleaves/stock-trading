@@ -5,7 +5,7 @@ import { useTradeStore } from '@/stores/trade'
 import { useAuthStore } from '@/stores/auth'
 import { usePnlCurveStore } from '@/stores/pnlCurve'
 import { api } from '@/services/api'
-import { setKLines, setStockRefs, setDailyOhlc, prependIndexTicks, prependStockTicks, applyMarketUpdate } from '@/composables/useSimulation'
+import { setKLines, setStockRefs, setDailyOhlc, prependIndexTicks, prependStockTicks, applyMarketUpdate, resetSimulationState } from '@/composables/useSimulation'
 import type { WsMessage, WsQuoteData, WsQuotesData, WsOrderData, WsPositionData, WsTradeData, WsUserData, WsSyncData, WsErrorData, WsIndexHistoryData, Trade, Order, Position, PnlCurveEntry } from '@/types'
 
 const WS_URL = 'ws://localhost:3001'
@@ -83,6 +83,18 @@ class MarketWebSocket {
   private resync() {
     if (this.ws && this.ws.readyState === WebSocket.OPEN && this.userId) {
       this.ws.send(JSON.stringify({ type: 'resync', userId: this.userId }))
+    }
+  }
+
+  setSpeed(speed: number) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'setSpeed', speed }))
+    }
+  }
+
+  reset() {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'reset' }))
     }
   }
 
@@ -185,6 +197,17 @@ class MarketWebSocket {
             prependStockTicks(code, ticks)
           }
         }
+        break
+      }
+      case 'speedChanged': {
+        const data = msg.data as { speed: number }
+        console.log(`[WebSocket] 时间流速已切换为 ${data.speed}x`)
+        break
+      }
+      case 'resetComplete': {
+        console.log('[WebSocket] 收到重置完成通知，刷新页面')
+        resetSimulationState()
+        window.location.reload()
         break
       }
       default:

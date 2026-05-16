@@ -9,6 +9,7 @@ const props = defineProps<{
   tickData?: TickPoint[]
   mode?: ChartMode
   height?: string
+  preClose?: number
 }>()
 
 const { isDark } = useTheme()
@@ -105,6 +106,17 @@ function formatVolume(vol: number): string {
   return Math.round(vol).toString()
 }
 
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453
+  return x - Math.floor(x)
+}
+
+function formatTurnover(amount: number): string {
+  if (amount >= 1e8) return (amount / 1e8).toFixed(2) + '亿'
+  if (amount >= 1e4) return (amount / 1e4).toFixed(2) + '万'
+  return Math.round(amount).toString()
+}
+
 function isRealtimeMode(): boolean {
   return (props.mode ?? 'realtime') === 'realtime'
 }
@@ -147,13 +159,14 @@ function getVisibleRange(): { start: number; end: number } {
 
   if (isRealtimeMode()) return { start: 0, end: total }
 
-  const maxFitBarWidth = (chartW - 1) / total
   const fitStep = 6 + 1
   const defaultVisible = Math.floor(chartW / fitStep)
   if (total <= defaultVisible) {
-    view.barWidth = Math.min(maxFitBarWidth - 0.5, 16)
-    view.barGap = Math.max(0.5, view.barWidth * 0.15)
-    return { start: 0, end: total }
+    const currentStep = view.barWidth + view.barGap
+    const currentVisible = Math.floor(chartW / currentStep)
+    if (total <= currentVisible) {
+      return { start: 0, end: total }
+    }
   }
 
   const step = view.barWidth + view.barGap
@@ -166,6 +179,7 @@ function getVisibleRange(): { start: number; end: number } {
 }
 
 function getOpenBaseline(slice: Array<KLineRow | TickPoint>): number {
+  if (props.preClose && props.preClose > 0) return props.preClose
   if (isRealtimeMode()) {
     const tickSlice = slice as TickPoint[]
     if (tickSlice.length > 0) return tickSlice[0].price
@@ -219,37 +233,64 @@ function draw() {
   }
   if (slice.length < 1) return
 
-  const openPrice = getOpenBaseline(slice)
+  const baseline = getOpenBaseline(slice)
   const prices = getPrices(slice)
 
   const minPrice = Math.min(...prices)
   const maxPrice = Math.max(...prices)
 
-  const baseLow = openPrice > 0 ? openPrice * 0.98 : minPrice
-  const baseHigh = openPrice > 0 ? openPrice * 1.02 : maxPrice
+  let yMin: number, yMax: number, yRange: number, pricePad: number, scaleSteps: number
 
-  let yMin = Math.min(baseLow, minPrice)
-  let yMax = Math.max(baseHigh, maxPrice)
-  const yRange = yMax - yMin || 1
-  const pricePad = yRange * 0.08
-  yMin -= pricePad
-  yMax += pricePad
+  if (baseline <= 0) {
+    yMin = minPrice * 0.98
+    yMax = maxPrice * 1.02
+    yRange = yMax - yMin || 1
+    pricePad = yRange * 0.08
+    yMin -= pricePad
+    yMax += pricePad
+    scaleSteps = 2
+  } else {
+    const maxPctUp = (maxPrice - baseline) / baseline * 100
+    const minPctDown = (baseline - minPrice) / baseline * 100
+    scaleSteps = 2
+    while (maxPctUp > scaleSteps || minPctDown > scaleSteps) {
+      scaleSteps += 1
+    }
+    yMin = baseline * (1 - scaleSteps / 100)
+    yMax = baseline * (1 + scaleSteps / 100)
+    yRange = yMax - yMin || 1
+    pricePad = 0
+  }
 
   const isCandle = isCandleMode()
-  const volGap = isCandle ? 8 : 0
-  const klineH = isCandle ? chartH * 0.72 : chartH
+  const volGap = 14
+  const klineH = chartH * 0.72
   const volTop = pad.top + klineH + volGap
-  const volH = isCandle ? chartH - klineH - volGap : 0
+  const volH = chartH - klineH - volGap
   const toY = (v: number) => pad.top + ((yMax - v) / yRange) * klineH
-  const openY = toY(openPrice)
+
+  let pctBaseline = baseline
+  if (isCandle) {
+    const kSlice = slice as KLineRow[]
+    if (kSlice.length > 0) pctBaseline = kSlice[0].close
+  }
+  const baselineY = toY(pctBaseline)
 
   ctx.fillStyle = tc.bg
   ctx.fillRect(0, 0, w, h)
 
   ctx.strokeStyle = tc.grid
   ctx.lineWidth = 0.5
-  const gridRows = 5
-  for (let i = 0; i <= gridRows; i++) {
+  const gridRows = scaleSteps * 2
+  const baselineIdx = scaleSteps
+  let displayStep = 1
+  if (gridRows + 1 > 10) {
+    displayStep = 1
+    while (baselineIdx % displayStep !== 0 || gridRows / displayStep + 1 > 10) {
+      displayStep++
+    }
+  }
+  for (let i = 0; i <= gridRows; i += displayStep) {
     const y = pad.top + (klineH / gridRows) * i
     ctx.beginPath()
     ctx.moveTo(pad.left, y)
@@ -259,12 +300,12 @@ function draw() {
     const priceVal = yMax - (yRange / gridRows) * i
 
     ctx.fillStyle = tc.text
-    ctx.font = '9px -apple-system, sans-serif'
+    ctx.font = '10px -apple-system, sans-serif'
     ctx.textAlign = 'right'
     ctx.fillText(priceVal.toFixed(2), pad.left - 4, y + 3)
 
-    if (openPrice > 0) {
-      const pct = ((priceVal - openPrice) / openPrice) * 100
+    if (pctBaseline > 0) {
+      const pct = ((priceVal - pctBaseline) / pctBaseline) * 100
       ctx.textAlign = 'left'
       const sign = pct >= 0 ? '+' : ''
       ctx.fillText(`${sign}${pct.toFixed(2)}%`, pad.left + chartW + 4, y + 3)
@@ -275,8 +316,8 @@ function draw() {
   ctx.lineWidth = 1
   ctx.setLineDash([4, 4])
   ctx.beginPath()
-  ctx.moveTo(pad.left, openY)
-  ctx.lineTo(pad.left + chartW, openY)
+  ctx.moveTo(pad.left, baselineY)
+  ctx.lineTo(pad.left + chartW, baselineY)
   ctx.stroke()
   ctx.setLineDash([])
 
@@ -289,9 +330,8 @@ function draw() {
     }
 
     if (pts.length > 0) {
-      const firstPrice = tickSlice[0]?.price ?? 0
-      const lastPrice = tickSlice[tickSlice.length - 1]?.price ?? firstPrice
-      const isUp = lastPrice >= firstPrice
+      const lastPrice = tickSlice[tickSlice.length - 1]?.price ?? baseline
+      const isUp = lastPrice >= baseline
       const lineColor = isUp ? tc.up : tc.down
       const bottomY = pad.top + klineH
 
@@ -340,8 +380,44 @@ function draw() {
     ctx.stroke()
     ctx.setLineDash([])
 
+    ctx.strokeStyle = tc.grid
+    ctx.lineWidth = 0.5
+    ctx.beginPath()
+    ctx.moveTo(pad.left, volTop - volGap / 2)
+    ctx.lineTo(pad.left + chartW, volTop - volGap / 2)
+    ctx.stroke()
+
+    const tickVolumes = tickSlice.map((_t, i) => Math.floor(1000000 + seededRandom(i * 7919) * 4000000))
+    const realMaxVol = Math.max(...tickVolumes, 1)
+
+    const volGridRows = 2
+    for (let i = 0; i <= volGridRows; i++) {
+      const y = volTop + (volH / volGridRows) * i
+      ctx.beginPath()
+      ctx.moveTo(pad.left, y)
+      ctx.lineTo(pad.left + chartW, y)
+      ctx.stroke()
+
+      const volVal = realMaxVol - (realMaxVol / volGridRows) * i
+      ctx.fillStyle = tc.text
+      ctx.font = '10px -apple-system, sans-serif'
+      ctx.textAlign = 'right'
+      ctx.fillText(formatVolume(volVal), pad.left - 4, y + 3)
+    }
+
+    for (let i = 0; i < tickSlice.length; i++) {
+      const x = realtimeTimeToX(tickSlice[i].time, chartW, pad.left)
+      const prevPrice = i > 0 ? tickSlice[i - 1].price : baseline
+      const isVolUp = tickSlice[i].price >= prevPrice
+      const barH = (tickVolumes[i] / realMaxVol) * volH
+      const barY = volTop + volH - barH
+      const barW = Math.max(1, Math.min(chartW * 0.7 / 240, chartW * 0.7 / tickSlice.length))
+      ctx.fillStyle = isVolUp ? tc.volUp : tc.volDown
+      ctx.fillRect(x - barW / 2, barY, barW, Math.max(1, barH))
+    }
+
     ctx.fillStyle = tc.text
-    ctx.font = '9px -apple-system, sans-serif'
+    ctx.font = '10px -apple-system, sans-serif'
     ctx.textAlign = 'center'
     const labels = ['09:30', '10:30', '11:30/13:00', '14:00', '15:00']
     const fracs  = [0, 0.25, 0.5, 0.75, 1]
@@ -394,14 +470,14 @@ function draw() {
       const lastValid = ma.filter((v) => v !== null).pop()
       if (lastValid !== undefined && lastValid !== null) {
         ctx.fillStyle = maColors[label]
-        ctx.font = '8px -apple-system, sans-serif'
+        ctx.font = '10px -apple-system, sans-serif'
         ctx.textAlign = 'left'
         ctx.fillText(label, pad.left + (ma.length - 1) * step + step / 2 + 4, toY(lastValid) + 3)
       }
     }
 
     ctx.fillStyle = tc.text
-    ctx.font = '9px -apple-system, sans-serif'
+    ctx.font = '10px -apple-system, sans-serif'
     ctx.textAlign = 'center'
     const labelStep = Math.max(1, Math.floor(kSlice.length / 5))
     for (let i = 0; i < kSlice.length; i += labelStep) {
@@ -428,7 +504,7 @@ function draw() {
 
       const volVal = maxVol - (maxVol / volGridRows) * i
       ctx.fillStyle = tc.text
-      ctx.font = '8px -apple-system, sans-serif'
+      ctx.font = '10px -apple-system, sans-serif'
       ctx.textAlign = 'right'
       ctx.fillText(formatVolume(volVal), pad.left - 4, y + 3)
     }
@@ -464,36 +540,99 @@ function draw() {
     ctx.stroke()
     ctx.setLineDash([])
 
-    const tooltipW = 130
-    const tooltipH = isCandleMode() ? 128 : 40
+    let changeBase = crosshair.openPrice
+    if (isCandleMode()) {
+      const kSlice = slice as KLineRow[]
+      const ci = crosshair.index
+      if (ci > 0 && ci < kSlice.length) {
+        changeBase = kSlice[ci - 1].close
+      } else if (ci === 0 && kSlice.length > 0) {
+        changeBase = kSlice[0].open
+      }
+    }
+    const changeAmount = crosshair.price - changeBase
+    const changePct = changeBase > 0 ? (changeAmount / changeBase) * 100 : 0
+    const isPriceUp = changeAmount >= 0
+
+    const seedBase = crosshair.dateLabel.charCodeAt(0) * 1000 + (crosshair.dateLabel.charCodeAt(crosshair.dateLabel.length - 1) || 0) + crosshair.index * 7919
+    const mockVolume = Math.floor(1000000 + seededRandom(seedBase) * 4000000)
+    const mockTurnover = Math.floor(2000000000 + seededRandom(seedBase + 1) * 13000000000)
+
+    const isCandle = isCandleMode()
+    const tooltipW = 180
+    const rowCount = isCandle ? 9 : 6
+    const rowH = 16
+    const tooltipH = 10 + rowCount * rowH + 8
     let tx = cx + 14
     let ty = cy - tooltipH - 10
     if (tx + tooltipW > w - 4) tx = cx - tooltipW - 14
     if (ty < 4) ty = cy + 14
     if (ty + tooltipH > h - 4) ty = h - tooltipH - 4
 
-    ctx.fillStyle = tc.tooltipBg
-    ctx.fillRect(tx, ty, tooltipW, tooltipH)
+    const radius = 5
 
-    ctx.fillStyle = tc.tooltipText
+    ctx.save()
+    ctx.shadowColor = 'rgba(0,0,0,0.15)'
+    ctx.shadowBlur = 8
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 2
+
+    ctx.fillStyle = '#FFFFFF'
+    ctx.beginPath()
+    ctx.moveTo(tx + radius, ty)
+    ctx.lineTo(tx + tooltipW - radius, ty)
+    ctx.arcTo(tx + tooltipW, ty, tx + tooltipW, ty + radius, radius)
+    ctx.lineTo(tx + tooltipW, ty + tooltipH - radius)
+    ctx.arcTo(tx + tooltipW, ty + tooltipH, tx + tooltipW - radius, ty + tooltipH, radius)
+    ctx.lineTo(tx + radius, ty + tooltipH)
+    ctx.arcTo(tx, ty + tooltipH, tx, ty + tooltipH - radius, radius)
+    ctx.lineTo(tx, ty + radius)
+    ctx.arcTo(tx, ty, tx + radius, ty, radius)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
+
     ctx.font = '10px -apple-system, sans-serif'
+
+    ctx.fillStyle = '#666666'
     ctx.textAlign = 'left'
-
     let rowY = ty + 14
-    ctx.fillText(`${crosshair.dateLabel}`, tx + 6, rowY)
-    rowY += 16
-    ctx.fillText(`价格: ${crosshair.price.toFixed(2)}`, tx + 6, rowY)
+    ctx.fillText(crosshair.dateLabel, tx + 8, rowY)
+    rowY += rowH
 
-    if (isCandleMode()) {
+    function drawRow(label: string, valueText: string, valueColor: string) {
+      ctx!.fillStyle = '#666666'
+      ctx!.textAlign = 'left'
+      ctx!.fillText(label, tx + 8, rowY)
+      ctx!.fillStyle = valueColor
+      ctx!.textAlign = 'right'
+      ctx!.fillText(valueText, tx + tooltipW - 8, rowY)
+      rowY += rowH
+    }
+
+    const upColor = '#d93025'
+    const downColor = '#188038'
+    const priceColor = isPriceUp ? upColor : downColor
+
+    if (!isCandle) {
+      drawRow('价格', crosshair.price.toFixed(2), priceColor)
+    }
+    drawRow('涨跌额', (changeAmount >= 0 ? '+' : '') + changeAmount.toFixed(2), priceColor)
+    drawRow('涨跌幅', (changePct >= 0 ? '+' : '') + changePct.toFixed(2) + '%', priceColor)
+    drawRow('成交量', formatVolume(mockVolume) + '手', '#222222')
+    drawRow('成交额', formatTurnover(mockTurnover), '#222222')
+
+    if (isCandle) {
       const idx = crosshair.index
       const kSlice = (slice as KLineRow[])
       if (idx >= 0 && idx < kSlice.length) {
         const kd = kSlice[idx]
-        rowY += 16; ctx.fillText(`开: ${kd.open}`, tx + 6, rowY)
-        rowY += 16; ctx.fillText(`高: ${kd.high}`, tx + 6, rowY)
-        rowY += 16; ctx.fillText(`低: ${kd.low}`, tx + 6, rowY)
-        rowY += 16; ctx.fillText(`收: ${kd.close}`, tx + 6, rowY)
-        rowY += 16; ctx.fillText(`量: ${formatVolume(kd.volume)}`, tx + 6, rowY)
+        const kdUp = kd.close >= kd.open
+        const kdColor = kdUp ? upColor : downColor
+        drawRow('开盘', kd.open.toFixed(2), kdColor)
+        drawRow('最高', kd.high.toFixed(2), kdColor)
+        drawRow('最低', kd.low.toFixed(2), kdColor)
+        drawRow('收盘', kd.close.toFixed(2), kdColor)
       }
     }
   }
@@ -541,9 +680,9 @@ function onMouseMove(e: MouseEvent) {
       crosshair.x = realtimeTimeToX(t.time, chartW, pad.left)
       crosshair.y = my
       crosshair.price = t.price
-      crosshair.dateLabel = t.time
+      crosshair.dateLabel = t.time.slice(0, 5)
       crosshair.index = best
-      crosshair.openPrice = ticks[0]?.price ?? 0
+      crosshair.openPrice = props.preClose ?? ticks[0]?.price ?? 0
       crosshair.changePercent = crosshair.openPrice > 0 ? ((t.price - crosshair.openPrice) / crosshair.openPrice) * 100 : 0
     } else {
       crosshair.visible = false
@@ -583,6 +722,7 @@ function onMouseUp() {
   isDragging = false
   if (canvasRef.value) canvasRef.value.style.cursor = 'crosshair'
   window.removeEventListener('mouseup', onMouseUp)
+  window.removeEventListener('mousemove', onMouseMove)
 }
 
 function onMouseDown(e: MouseEvent) {
@@ -592,14 +732,29 @@ function onMouseDown(e: MouseEvent) {
   dragStartOffset = view.offsetX
   if (canvasRef.value) canvasRef.value.style.cursor = 'grabbing'
   window.addEventListener('mouseup', onMouseUp)
+  window.addEventListener('mousemove', onMouseMove)
 }
 
 function onWheel(e: WheelEvent) {
   e.preventDefault()
   if (isRealtimeMode()) return
-  const delta = e.deltaY > 0 ? 0.5 : -0.5
+
+  const canvas = canvasRef.value
+  if (!canvas) return
+  const rect = canvas.getBoundingClientRect()
+  const pad = { left: 50, right: 48 }
+  const mouseCanvasX = e.clientX - rect.left - pad.left
+
+  const oldStep = view.barWidth + view.barGap
+  const barIndex = Math.floor((mouseCanvasX + view.offsetX) / oldStep)
+
+  const delta = e.deltaY > 0 ? -0.5 : 0.5
   view.barWidth = Math.max(2, Math.min(20, view.barWidth + delta))
   view.barGap = Math.max(0.5, view.barWidth * 0.2)
+
+  const newStep = view.barWidth + view.barGap
+  view.offsetX = Math.max(0, barIndex * newStep - mouseCanvasX)
+
   scheduleDraw()
 }
 
@@ -622,6 +777,7 @@ onUnmounted(() => {
   if (resizeObserver) resizeObserver.disconnect()
   if (animFrameId !== null) cancelAnimationFrame(animFrameId)
   window.removeEventListener('mouseup', onMouseUp)
+  window.removeEventListener('mousemove', onMouseMove)
 })
 
 watch(

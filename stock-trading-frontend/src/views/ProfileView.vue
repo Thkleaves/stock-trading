@@ -58,10 +58,12 @@ const totalPnl = computed(() =>
   positions.value.reduce((sum, p) => sum + pnlVal(p), 0)
 )
 
-const totalPnlPercent = computed(() => {
-  const cost = positions.value.reduce((sum, p) => sum + p.avgPrice * p.quantity, 0)
-  return cost > 0 ? (totalPnl.value / cost) * 100 : 0
+const historicalPnl = computed(() => {
+  const data = pnlCurveStore.data
+  return data.length > 0 ? data[data.length - 1].value : 0
 })
+
+const todayPnl = computed(() => totalPnl.value - historicalPnl.value)
 
 const totalAsset = computed(() => authStore.balance + marketValue.value)
 
@@ -71,9 +73,13 @@ const outlineCards = computed(() => [
   { label: '可用余额', value: authStore.balance, color: '' },
   {
     label: '累计盈亏',
-    value: totalPnl.value,
-    color: totalPnl.value >= 0 ? 'color-up' : 'color-down',
-    suffix: ` (${totalPnlPercent.value >= 0 ? '+' : ''}${totalPnlPercent.value.toFixed(2)}%)`,
+    value: historicalPnl.value,
+    color: historicalPnl.value >= 0 ? 'color-up' : 'color-down',
+  },
+  {
+    label: '今日盈亏',
+    value: todayPnl.value,
+    color: todayPnl.value >= 0 ? 'color-up' : 'color-down',
   },
 ])
 
@@ -299,9 +305,7 @@ watch(pnlCurveData, () => {
         <div :class="['asset-value', card.color]">
           ¥{{ formatMoney(card.value) }}
         </div>
-        <div v-if="card.suffix" :class="['asset-suffix', card.color]">
-          {{ card.suffix }}
-        </div>
+        
       </div>
     </div>
 
@@ -434,7 +438,7 @@ watch(pnlCurveData, () => {
 
 .asset-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   flex-shrink: 0;
 }

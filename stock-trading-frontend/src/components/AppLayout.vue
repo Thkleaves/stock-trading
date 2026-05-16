@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useTheme } from '@/composables/useTheme'
 import { useSimulation } from '@/composables/useSimulation'
 import UserSwitcher from '@/components/UserSwitcher.vue'
+import { marketWebSocket } from '@/services/websocket'
 
 const router = useRouter()
 const route = useRoute()
@@ -16,6 +17,18 @@ const navItems = [
 ]
 
 const activePath = computed(() => route.path)
+
+const currentSpeed = ref(1)
+const speedOptions = [1, 10, 60, 180]
+
+function setSpeed(speed: number) {
+  currentSpeed.value = speed
+  marketWebSocket.setSpeed(speed)
+}
+
+function resetSimulation() {
+  marketWebSocket.reset()
+}
 </script>
 
 <template>
@@ -37,6 +50,18 @@ const activePath = computed(() => route.path)
         </button>
       </div>
       <div class="nav-right">
+        <div class="speed-control">
+          <span class="speed-label">流速</span>
+          <button
+            v-for="s in speedOptions"
+            :key="s"
+            :class="['speed-btn', { active: currentSpeed === s }]"
+            @click="setSpeed(s)"
+          >
+            {{ s }}x
+          </button>
+        </div>
+        <button class="reset-btn" @click="resetSimulation">重置</button>
         <UserSwitcher />
         <span class="nav-time">{{ currentDate }} {{ currentTime }}</span>
         <div class="theme-toggle" @click="toggle">
@@ -125,6 +150,59 @@ const activePath = computed(() => route.path)
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.speed-label {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.speed-btn {
+  padding: 2px 8px;
+  border: 1px solid var(--border-primary);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+
+.speed-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-accent);
+}
+
+.speed-btn.active {
+  color: var(--accent-neon);
+  border-color: var(--accent-neon);
+  background: var(--accent-glow);
+}
+
+.reset-btn {
+  padding: 2px 10px;
+  border: 1px solid var(--border-accent);
+  background: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+
+.reset-btn:hover {
+  color: #ef4444;
+  border-color: #ef4444;
 }
 
 .nav-time {

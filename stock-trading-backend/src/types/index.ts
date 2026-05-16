@@ -12,6 +12,7 @@ export interface User {
   password: string
   balance: number
   frozenBalance: number
+  initialStockCodes: string[]
 }
 
 export interface Stock {

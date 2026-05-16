@@ -31,9 +31,9 @@ const stockCode = computed(() => route.params.code as string)
 const stockInfo = computed(() => {
   const ref = stockRefs.value[stockCode.value]
   if (!ref) return null
-  const price = currentPrices[stockCode.value] ?? ref.open
-  const change = price - ref.open
-  const changePercent = ref.open > 0 ? (change / ref.open) * 100 : 0
+  const price = currentPrices[stockCode.value] ?? ref.preClose
+  const change = price - ref.preClose
+  const changePercent = ref.preClose > 0 ? (change / ref.preClose) * 100 : 0
   return {
     code: ref.code,
     name: ref.name,
@@ -248,6 +248,10 @@ const klineData = computed(() => {
 const tickData = computed(() => {
   if (chartMode.value === 'realtime') return stockTicks[stockCode.value] || []
   return []
+})
+
+const stockPreClose = computed(() => {
+  return stockRefs.value[stockCode.value]?.preClose ?? 0
 })
 
 function setMode(mode: ChartMode) {
@@ -479,6 +483,7 @@ async function handleSell() {
             :data="klineData"
             :tick-data="tickData"
             :mode="chartMode"
+            :pre-close="stockPreClose"
             height="100%"
           />
         </div>

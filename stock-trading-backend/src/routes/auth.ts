@@ -40,13 +40,12 @@ router.post(
       return
     }
 
-    const user = usersStore.create(username, password)
-
     const picks = shuffle(STOCKS).slice(0, INITIAL_STOCK_COUNT)
-    const stockCodes: string[] = []
+    const stockCodes: string[] = picks.map((s) => s.code)
+
+    const user = usersStore.create(username, password, stockCodes)
 
     for (const stock of picks) {
-      stockCodes.push(stock.code)
       positionsStore.addPosition(user.id, stock.code, INITIAL_STOCK_SHARES, stock.initialPrice)
     }
 

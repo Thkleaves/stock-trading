@@ -57,7 +57,8 @@ function computeHistoricalPnl(
     }
   }
 
-  const recentDates = allDates.slice(-days)
+  const simulationToday = allDates.length > 0 ? allDates.reduce((a, b) => a > b ? a : b) : ''
+  const recentDates = allDates.filter(d => d < simulationToday).slice(-days)
   const result: PnlCurveEntry[] = []
 
   for (const date of recentDates) {

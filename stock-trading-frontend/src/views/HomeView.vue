@@ -27,6 +27,10 @@ const indexData = computed(() => {
   return dailyKLines.value['000001'] || []
 })
 
+const indexPreClose = computed(() => {
+  return stockRefs.value['000001']?.preClose ?? 0
+})
+
 function setIndexMode(mode: ChartMode) {
   indexMode.value = mode
 }
@@ -50,9 +54,9 @@ const stockList = computed(() => {
   return Object.entries(stockRefs.value)
     .filter(([, ref]) => ref.type === 'stock')
     .map(([code, ref]) => {
-      const price = currentPrices[code] ?? ref.open
-      const change = price - ref.open
-      const changePercent = ref.open > 0 ? (change / ref.open) * 100 : 0
+      const price = currentPrices[code] ?? ref.preClose
+      const change = price - ref.preClose
+      const changePercent = ref.preClose > 0 ? (change / ref.preClose) * 100 : 0
       return {
         code,
         name: ref.name,
@@ -92,21 +96,21 @@ function goStockDetail(code: string) {
         </div>
         <div class="index-chart-wrap">
           <div class="index-period-bar">
-            <div class="period-btns">
+            <div class="mode-segment">
               <button
-                :class="['btn btn-xs', { active: indexMode === 'realtime' }]"
+                :class="['seg-btn', { active: indexMode === 'realtime' }]"
                 @click="setIndexMode('realtime')"
               >实时</button>
               <button
-                :class="['btn btn-xs', { active: indexMode === 'day' }]"
+                :class="['seg-btn', { active: indexMode === 'day' }]"
                 @click="setIndexMode('day')"
               >日K</button>
               <button
-                :class="['btn btn-xs', { active: indexMode === 'week' }]"
+                :class="['seg-btn', { active: indexMode === 'week' }]"
                 @click="setIndexMode('week')"
               >周K</button>
               <button
-                :class="['btn btn-xs', { active: indexMode === 'month' }]"
+                :class="['seg-btn', { active: indexMode === 'month' }]"
                 @click="setIndexMode('month')"
               >月K</button>
             </div>
@@ -120,6 +124,7 @@ function goStockDetail(code: string) {
               :data="indexData"
               :tick-data="indexMode === 'realtime' ? (indexTicks['000001'] || []) : []"
               :mode="indexMode"
+              :pre-close="indexPreClose"
               height="100%"
             />
           </div>
@@ -234,25 +239,45 @@ function goStockDetail(code: string) {
   flex-shrink: 0;
 }
 
-.period-btns {
+.mode-segment {
   display: flex;
-  gap: 2px;
+  background: var(--bg-muted, #f0f3f6);
+  border-radius: 6px;
+  padding: 2px;
+  margin: 10px 0;
+  gap: 0;
 }
 
-.btn-xs {
-  padding: 2px 8px;
-  font-size: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg-secondary);
+.seg-btn {
+  padding: 4px 14px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  font-size: 12px;
+  font-family: var(--font-mono);
   color: var(--text-secondary);
-  border-radius: 3px;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-.btn-xs.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+.seg-btn:hover {
+  color: var(--text-primary);
+}
+
+.seg-btn.active {
+  background: #fff;
+  color: var(--accent, #2563eb);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='dark'] .mode-segment {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme='dark'] .seg-btn.active {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .index-chart-inner {

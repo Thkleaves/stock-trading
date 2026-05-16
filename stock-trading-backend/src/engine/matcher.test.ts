@@ -7,7 +7,7 @@ import { matchOrder, validateBuy, validateSell } from './matcher.js'
 import type { Order, User } from '../types/index.js'
 
 function createUser(id: string, balance = 1_000_000): User {
-  const user: User = { id, username: `u_${id}`, password: 'pass', balance, frozenBalance: 0 }
+  const user: User = { id, username: `u_${id}`, password: 'pass', balance, frozenBalance: 0, initialStockCodes: [] }
   usersStore._unsafeSet(user)
   return user
 }

@@ -66,7 +66,7 @@ export interface CreateOrderRequest {
 }
 
 export interface WsMessage {
-  type: 'quote' | 'quotes' | 'order' | 'position' | 'trade' | 'user' | 'sync' | 'error' | 'indexHistory'
+  type: 'quote' | 'quotes' | 'order' | 'position' | 'trade' | 'user' | 'sync' | 'error' | 'indexHistory' | 'resetComplete' | 'speedChanged'
   data: unknown
   eventSeq?: number
   timestamp?: string

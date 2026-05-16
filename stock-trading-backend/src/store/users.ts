@@ -5,9 +5,9 @@ import { INITIAL_BALANCE } from '../types/index.js'
 const users = new Map<string, User>()
 
 export const usersStore = {
-  create(username: string, password: string): User {
+  create(username: string, password: string, initialStockCodes: string[]): User {
     const id = uuid()
-    const user: User = { id, username, password, balance: INITIAL_BALANCE, frozenBalance: 0 }
+    const user: User = { id, username, password, balance: INITIAL_BALANCE, frozenBalance: 0, initialStockCodes }
     users.set(id, user)
     return user
   },
